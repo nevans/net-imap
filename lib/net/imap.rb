@@ -1422,7 +1422,11 @@ module Net
         else
           send_command(cmd, *keys)
         end
-        return @responses.delete("SEARCH")[-1]
+        if results = @responses.delete("SEARCH")
+          return results[-1]
+        else
+          return []
+        end
       end
     end
 
