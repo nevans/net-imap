@@ -2316,7 +2316,7 @@ module Net
       end
 
       def response_tagged
-        tag = atom
+        tag = astring_chars
         match(T_SPACE)
         token = match(T_ATOM)
         name = token.value.upcase
@@ -3128,7 +3128,7 @@ module Net
             shift_token
             next
           end
-          data.push(strict_atom.upcase)
+          data.push(atom.upcase)
         end
         data
       end
@@ -3276,7 +3276,7 @@ module Net
         if string_token?(token)
           return string
         else
-          return atom
+          return astring_chars
         end
       end
 
@@ -3306,50 +3306,38 @@ module Net
         return token.value.upcase
       end
 
-      # ATOM-CHAR in RFC3501 does not allow T_RBRA
-      def strict_atom
-        result = String.new
-        token = lookahead
-        while [T_ATOM, T_NUMBER, T_NIL, T_LBRA, T_PLUS].include? token.symbol
-          result.concat token.value
-          shift_token
-          token = lookahead
-        end
-        if result.empty?
-          parse_error("unexpected token %s", token.symbol)
-        else
-          return result
-        end
-      end
-
-      def atom
-        result = String.new
-        while true
-          token = lookahead
-          if atom_token?(token)
-            result.concat(token.value)
-            shift_token
-          else
-            if result.empty?
-              parse_error("unexpected token %s", token.symbol)
-            else
-              return result
-            end
-          end
-        end
-      end
-
+      # atom            = 1*ATOM-CHAR
+      # ATOM-CHAR       = <any CHAR except atom-specials>
       ATOM_TOKENS = [
         T_ATOM,
         T_NUMBER,
         T_NIL,
         T_LBRA,
-        T_RBRA,
         T_PLUS
       ]
 
-      def atom_token?(token)
-        return ATOM_TOKENS.include?(token.symbol)
+      def atom
+        -combine_adjacent(*ATOM_TOKENS)
+      end
+
+      # ASTRING-CHAR    = ATOM-CHAR / resp-specials
+      # resp-specials   = "]"
+      ASTRING_CHARS_TOKENS = [*ATOM_TOKENS, T_RBRA]
+
+      def astring_chars
+        combine_adjacent(*ASTRING_CHARS_TOKENS)
+      end
+
+      def combine_adjacent(*tokens)
+        result = "".b
+        while token = accept(*tokens)
+          result << token.value
+        end
+        if result.empty?
+          parse_error('unexpected token %s (expected %s)',
+                      lookahead.symbol, args.join(" or "))
+        end
+        result
       end
 
       def number
@@ -3376,6 +3364,18 @@ module Net
         end
         shift_token
         return token
+      end
+
+      # like match, but does not raise error on failure.
+      #
+      # returns and shifts token on successful match
+      # returns nil and leaves @token unshifted on no match
+      def accept(*args)
+        token = lookahead
+        if args.include?(token.symbol)
+          shift_token
+          token
+        end
       end
 
       def lookahead
