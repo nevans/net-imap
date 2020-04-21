@@ -3128,7 +3128,7 @@ module Net
             shift_token
             next
           end
-          data.push(atom.upcase)
+          data.push(atom)
         end
         data
       end

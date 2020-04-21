@@ -240,7 +240,7 @@ EOF
     code = response.data.code
     assert_equal("CAPABILITY", code.name)
     assert_equal(
-      ["IMAP4REV1", "SASL-IR", "1234", "NIL", "THIS+THAT", "+", "AUTH=PLAIN", "ID"],
+      ["IMAP4rev1", "SASL-IR", "1234", "NIL", "THIS+THAT", "+", "AUTH=PLAIN", "ID"],
       code.data
     )
   end
