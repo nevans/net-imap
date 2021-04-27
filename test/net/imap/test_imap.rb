@@ -775,6 +775,38 @@ EOF
     end
   end
 
+  def test_authenticate_plain
+    server = create_tcp_server
+    port = server.addr[1]
+    requests = Queue.new
+    start_server do
+      sock = server.accept
+      begin
+        sock.print("* OK test server\r\n")
+        requests.push(sock.gets)
+        sock.print("+ \r\n") # TODO: SASL-IR
+        requests.push(sock.gets)
+        sock.print("* CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE\r\nRUBY0001 OK user authenticated (Success)\r\n")
+        requests.push(sock.gets)
+        sock.print("RUBY0002 OK LOGOUT completed\r\n")
+      ensure
+        sock.close
+        server.close
+      end
+    end
+    begin
+      imap = Net::IMAP.new(server_addr, :port => port)
+      imap.authenticate("PLAIN", "user", "pass")
+      # TODO: support SASL-IR
+      assert_equal("RUBY0001 AUTHENTICATE PLAIN\r\n", requests.pop)
+      assert_equal("AHVzZXIAcGFzcw==\r\n", requests.pop)
+      imap.logout
+      assert_equal("RUBY0002 LOGOUT\r\n", requests.pop)
+    ensure
+      imap.disconnect if imap && !imap.disconnected?
+    end
+  end
+
   private
 
   def imaps_test

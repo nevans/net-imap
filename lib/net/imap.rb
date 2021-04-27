@@ -16,7 +16,9 @@
 
 require "socket"
 require "monitor"
-require 'net/protocol'
+require "net/protocol"
+require "net/sasl"
+
 begin
   require "openssl"
 rescue LoadError
@@ -269,6 +271,23 @@ module Net
     # Sets the debug mode.
     def self.debug=(val)
       return @@debug = val
+    end
+
+    # Adds an +authenticator+ for use with Net::IMAP#authenticate, using a clone
+    # of Net::SASL's default global registry.  Authenticators added here will
+    # not affect non-IMAP users of Net::SASL.
+    #
+    # +authenticator+ should match Net::SASL::Authenticator's interface.  If it
+    # is missing certain instance methods, such as `supports_initial_response?`
+    # and `done?`, it will be wrapped inside a backwards-compatible adapter.
+    def self.add_authenticator(sasl_mechanism, authenticator)
+      raise NotImplementedError, "TODO: use a dup of Net::SASL's global registry"
+    end
+
+    # Builds an authenticator for Net::IMAP#authenticate.  +args+ will be passed
+    # directly to the chosen authenticator's +#initialize+.
+    def self.authenticator(sasl_mechanism, *args, **kwargs)
+      Net::SASL.authenticator(sasl_mechanism, *args, **kwargs)
     end
 
     # The default port for IMAP connections, port 143
@@ -1575,5 +1594,3 @@ module Net
     end
   end
 end
-
-require_relative "imap/authenticators"
