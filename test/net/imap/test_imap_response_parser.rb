@@ -55,6 +55,9 @@ class IMAPResponseParserTest < Test::Unit::TestCase
   # §7.3.3: STATUS response
   generate_tests_from fixture_file: "status_responses.yml"
 
+  # §7.3.4: ESEARCH response
+  generate_tests_from fixture_file: "esearch_responses.yml"
+
   # RFC3501 §7.2.5: SEARCH response (obsolete in IMAP4rev2):
   generate_tests_from fixture_file: "search_responses.yml"
 
