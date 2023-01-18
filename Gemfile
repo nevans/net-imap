@@ -14,3 +14,4 @@ gem "test-unit"
 gem "test-unit-ruby-core", git: "https://github.com/ruby/test-unit-ruby-core"
 
 gem "benchmark-driver"
+gem "simplecov"

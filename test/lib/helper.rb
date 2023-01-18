@@ -1,3 +1,4 @@
+require "simplecov"
 require "test/unit"
 require "core_assertions"
 
