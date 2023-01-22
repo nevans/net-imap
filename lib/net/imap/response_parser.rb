@@ -1973,14 +1973,17 @@ module Net
           when "MAILBOXID"          then SP!; parens__objectid     # RFC8474: OBJECTID
           when "UIDREQUIRED"        then                           # RFC9586: UIDONLY
           else
-            SP? and text_chars_except_rbra
+            SP? and resp_code__unhandled
           end
         ResponseCode.new(name, data)
       end
 
       alias resp_text_code__name case_insensitive__atom
 
-      # 1*<any TEXT-CHAR except "]">
+      # TODO: wrap string in UnparsedData
+      def resp_code__unhandled; text_chars_except_rbra end
+
+      #   [SP 1*<any TEXT-CHAR except "]">]
       def text_chars_except_rbra
         match_re(CTEXT_REGEXP, '1*<any TEXT-CHAR except "]">')[0]
       end
