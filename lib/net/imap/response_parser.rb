@@ -1745,6 +1745,11 @@ module Net
         end
       end
 
+      # TODO: backtrack on parse failure or unexpected data, using
+      #       resp_code__unhandled
+      # TODO: Profile Guided Optimization:
+      #       collect frequency data, and order by most to least frequent
+      #
       # RFC3501 (See https://www.rfc-editor.org/errata/rfc3501):
       #   resp-text-code   = "ALERT" /
       #                      "BADCHARSET" [SP "(" charset *(SP charset) ")" ] /
@@ -1798,8 +1803,39 @@ module Net
       # RFC7162 (QRESYNC):
       #   resp-text-code   =/ "CLOSED"
       #
+      # RFC4469: CATENATE:                  "TOOBIG"
+      # RFC4978: COMPRESS=DEFLATE:          "COMPRESSIONACTIVE"
+      # RFC5255: I18NLEVEL={1,2}, LANGUAGE: "BADCOMPARATOR"
+      # RFC5259: CONVERT:                   "TEMPFAIL"
+      # RFC5565: NOTIFY:                    "NOTIFICATIONOVERFLOW"
+      # RFC6154: SPECIAL-USE:               "USEATTR"
+      # RFC5259: CONVERT, codes with simple numeric data
+      #   "MAXCONVERTMESSAGES" SP nz-number
+      #   "MAXCONVERTPARTS"    SP nz-number
+      # RFC7162: CONDSTORE, QRESYNC:
+      #   "HIGHESTMODSEQ" SP mod-sequence-value
+      # RFC7162: CONDSTORE, QRESYNC
+      #   "MODIFIED" SP sequence-set
       # RFC8474: OBJECTID
       #   resp-text-code   =/ "MAILBOXID" SP "(" objectid ")"
+      # RFC5267: CONTEXT
+      #   "NOUPDATE" SP quoted
+      # RFC5566: FILTERS
+      #   "UNDEFINED-FILTER" SP filter-name
+      # RFC4467: URLAUTH
+      #   "URLMECH" SP "INTERNAL" *(SP mechanism ["=" base64])
+      # RFC4469: CATENATE
+      #   "BADURL" SP url-resp-text
+      # RFC5564: METADATA
+      #   "METADATA" SP "LONGENTRIES" SP number
+      #                       ; new response codes for GETMETADATA
+      #   "METADATA" SP ("MAXSIZE" SP number / "TOOMANY" / "NOPRIVATE")
+      #                       ; new response codes for SETMETADATA
+      #                       ; failures
+      # RFC5565: NOTIFY
+      #   "BADEVENT" SP "(" event-name *(SP event-name) ")"
+      #
+      #   atom [SP 1*<any TEXT-CHAR except "]">]
       def resp_text_code
         name = resp_text_code__name
         data =
@@ -1818,10 +1854,25 @@ module Net
             "EXPUNGEISSUED", "CORRUPTION", "SERVERBUG", "CLIENTBUG", "CANNOT",
             "LIMIT", "OVERQUOTA", "ALREADYEXISTS", "NONEXISTENT", "CLOSED",
             "NOTSAVED", "UIDNOTSTICKY", "UNKNOWN-CTE", "HASCHILDREN"
+            nil
+          when "USEATTR"            then nil                       # SPECIAL-USE
           when "NOMODSEQ"           then nil                       # CONDSTORE
           when "HIGHESTMODSEQ"      then SP!; mod_sequence_value   # CONDSTORE
           when "MODIFIED"           then SP!; sequence_set         # CONDSTORE
           when "MAILBOXID"          then SP!; parens__objectid     # RFC8474: OBJECTID
+          when "COMPRESSIONACTIVE"  then nil                       # COMPRESS=*
+          when "BADURL"             then SP!; url_resp_text        # CATENATE
+          when "TOOBIG"             then nil                       # CATENATE
+          when "MAXCONVERTMESSAGES" then SP!; nz_number            # CONVERT
+          when "MAXCONVERTPARTS"    then SP!; nz_number            # CONVERT
+          when "NOUPDATE"           then SP!; quoted               # CONTEXT
+          when "TEMPFAIL"           then nil                       # CONVERT
+          when "UNDEFINED-FILTER"   then SP!; filter_name          # FILTERS
+          when "METADATA"           then resp_code__metadata       # METADATA
+          when "BADEVENT"           then resp_code__badevent       # NOTIFY
+          when "NOTIFICATIONOVERFLOW" then nil                     # NOTIFY
+          when "URLMECH"            then resp_code__urlmech        # URLAUTH
+          when "BADCOMPARATOR"      then nil                       # I18NLEVEL=
           else
             SP? and resp_code__unhandled
           end
@@ -1837,6 +1888,12 @@ module Net
       def text_chars_except_rbra
         match_re(CTEXT_REGEXP, '1*<any TEXT-CHAR except "]">')[0]
       end
+
+      # TODO: should unhandled response code data warn?
+      alias resp_code__badevent       resp_code__unhandled
+      alias resp_code__metadata       resp_code__unhandled
+      alias resp_code__urlmech        resp_code__unhandled
+      alias url_resp_text             text_chars_except_rbra
 
       # "(" charset *(SP charset) ")"
       def charset__list
@@ -1984,6 +2041,14 @@ module Net
 
       def parens__objectid; lpar; _ = objectid; rpar; _ end
       def nparens__objectid; NIL? ? nil : parens__objectid end
+
+      # RFC5566:
+      # filter-name           =  1*<any ATOM-CHAR except "/">
+      #                       ;; Note that filter-name disallows UTF-8 or
+      #                       ;; the following characters: "(", ")", "{",
+      #                       ;; " ", "%", "*", "]".  See definition of
+      #                       ;; ATOM-CHAR [RFC3501].
+      alias filter_name atom # TODO: disallow "/"
 
       # RFC-4315 (UIDPLUS) or RFC9051 (IMAP4rev2):
       #      uid-set         = (uniqueid / uid-range) *("," uid-set)
