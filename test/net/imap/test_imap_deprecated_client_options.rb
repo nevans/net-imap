@@ -29,6 +29,25 @@ class IMAPDeprecatedClientOptionsTest < Net::IMAP::TestCase
       end
     end
 
+    test "Combine obsolete port argument with keyword arguments" do
+      run_fake_server_in_thread do |server|
+        with_client(server.host, server.port, open_timeout: 999) do |client|
+          assert_equal server.port, client.port
+          assert_equal 999, client.open_timeout
+          assert_equal false, client.ssl_ctx_params
+        end
+      end
+    end
+
+    test "identical port arguments are allowed" do
+      run_fake_server_in_thread do |server|
+        with_client(server.host, server.port, port: server.port) do |client|
+          assert_equal server.port, client.port
+          assert_equal false, client.ssl_ctx_params
+        end
+      end
+    end
+
     test "Convert deprecated usessl (= false) with warning" do
       run_fake_server_in_thread do |server|
         assert_deprecated_warning(/Call Net::IMAP\.new with keyword/i) do
@@ -80,6 +99,12 @@ class IMAPDeprecatedClientOptionsTest < Net::IMAP::TestCase
     end
 
     test "combined options hash and ssl args raises ArgumentError" do
+      assert_raise(ArgumentError) do
+        Net::IMAP.new("localhost", {port: 993}, true)
+      end
+    end
+
+    test "conflicting ports options raises ArgumentError" do
       assert_raise_with_message ArgumentError, /deprecated SSL.*options hash/ do
         Net::IMAP.new("localhost", {port: 993}, true)
       end
