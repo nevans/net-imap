@@ -7,34 +7,35 @@ module Net
     module DeprecatedClientOptions
 
       # :call-seq:
-      #   Net::IMAP.new(host, **options) # standard keyword options
-      #   Net::IMAP.new(host, options)   # obsolete hash options
-      #   Net::IMAP.new(host, port)      # obsolete port argument
-      #   Net::IMAP.new(host, port, usessl, certs = nil, verify = true) # deprecated SSL arguments
+      #   Net::IMAP.new(host, **options)              # standard keyword options
+      #   Net::IMAP.new(host, port = nil, **options)  # positional port argument
+      #   Net::IMAP.new(host, options = {})           # obsolete options hash
+      #   Net::IMAP.new(host, port, usessl, certs = nil, verify = true) # deprecated
       #
       # Translates Net::IMAP.new arguments for backward compatibility.
       #
-      # ==== Obsolete arguments
+      # ==== Positional port argument
       #
-      # Use of obsolete arguments does not print a warning.  Obsolete arguments
-      # will be deprecated by a future release.
+      # If a second positional argument is given and it is not a hash, it is
+      # converted to the +port+ keyword argument.
+      #     # with positional port argument
+      #     Net::IMAP.new("imap.example.com", 114433)
+      #     # with keyword port argument
+      #     Net::IMAP.new("imap.example.com", port: 114433)
+      #
+      # ==== Obsolete options hash
       #
       # If a second positional argument is given and it is a hash (or is
       # convertible via +#to_hash+), it is converted to keyword arguments.
+      # Using an options hash does not currently print a warning, but will be
+      # deprecated and print warnings in a future release.
       #
       #     # Obsolete:
       #     Net::IMAP.new("imap.example.com", options_hash)
       #     # Use instead:
       #     Net::IMAP.new("imap.example.com", **options_hash)
       #
-      # If a second positional argument is given and it is not a hash, it is
-      # converted to the +port+ keyword argument.
-      #     # Obsolete:
-      #     Net::IMAP.new("imap.example.com", 114433)
-      #     # Use instead:
-      #     Net::IMAP.new("imap.example.com", port: 114433)
-      #
-      # ==== Deprecated arguments
+      # ==== Deprecated SSL arguments
       #
       # Using deprecated arguments prints a warning.  Convert to keyword
       # arguments to avoid the warning.  Deprecated arguments will be removed in
@@ -69,27 +70,15 @@ module Net
       #     # Use instead:
       #     Net::IMAP.new("imap.example.com", ssl: {verify_mode: OpenSSL::SSL::VERIFY_NONE})
       #
-      def initialize(host, port_or_options = nil, *deprecated, **options)
-        if port_or_options.nil? && deprecated.empty?
-          super host, **options
-        elsif options.any?
-          # Net::IMAP.new(host, *__invalid__, **options)
-          raise ArgumentError, "Do not combine deprecated and keyword arguments"
-        elsif port_or_options.respond_to?(:to_hash) and deprecated.any?
-          # Net::IMAP.new(host, options, *__invalid__)
-          raise ArgumentError, "Do not use deprecated SSL params with options hash"
-        elsif port_or_options.respond_to?(:to_hash)
-          super host, **Hash.try_convert(port_or_options)
-        elsif deprecated.empty?
-          super host, port: port_or_options
-        elsif deprecated.shift
-          warn("DEPRECATED: Call Net::IMAP.new with keyword options",
-               uplevel: 1, category: :deprecated)
-          super host, port: port_or_options, ssl: create_ssl_params(*deprecated)
+      def initialize(host, port = nil, *ssl, **options)
+        if !ssl.empty?
+          initialize_deprecated_ssl  host, port, *ssl, **options
+        elsif port.respond_to?(:to_hash)
+          initialize_port_or_options host, port, **options
+        elsif port
+          initialize_port_or_options host, port, **options
         else
-          warn("DEPRECATED: Call Net::IMAP.new with keyword options",
-               uplevel: 1, category: :deprecated)
-          super host, port: port_or_options, ssl: false
+          super host, **options
         end
       end
 
@@ -122,6 +111,28 @@ module Net
       end
 
       private
+
+      def initialize_deprecated_ssl(host, port, *ssl, **options)
+        if options.any? || port.respond_to?(:to_hash)
+          raise ArgumentError, "Do not use deprecated SSL params with options"
+        end
+        warn("DEPRECATED: Call Net::IMAP.new with keyword options",
+             uplevel: 2, category: :deprecated)
+        ssl = ssl.shift ? create_ssl_params(*ssl) : false
+        initialize host, port: port, ssl: ssl
+      end
+
+      def initialize_port_or_options(host, port_or_options, **options)
+        if port_or_options.respond_to?(:to_hash) && options.any?
+          raise ArgumentError, "Conflicting options hash and keyword arguments"
+        elsif port_or_options.respond_to?(:to_hash)
+          initialize host, **Hash.try_convert(port_or_options)
+        elsif options[:port] && port_or_options != options[:port]
+          raise ArgumentError, "Conflicting port arguments"
+        else
+          initialize host, port: port_or_options, **options
+        end
+      end
 
       def create_ssl_params(certs = nil, verify = true)
         params = {}
