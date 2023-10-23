@@ -945,6 +945,7 @@ module Net
             when "X-GM-MSGID"           then x_gm_id            # GMail
             when "X-GM-THRID"           then x_gm_id            # GMail
             when "X-GM-LABELS"          then x_gm_labels        # GMail
+            when "ANNOTATION"           then annotate__msgatt   # ANNOTATE  TODO:...
             else parse_error("unknown attribute `%s' for {%d}", name, n)
             end
           attr[name] = val
