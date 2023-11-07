@@ -89,7 +89,7 @@ module Net
     # space.  See STRFDATE.
     def self.decode_date(string)
       string = string.delete_prefix('"').delete_suffix('"')
-      Date.strptime(string, STRFDATE)
+      Date.strptime(string, STRFDATE, Date::GREGORIAN)
     end
 
     # :call-seq: encode_datetime(time) -> string
@@ -113,7 +113,7 @@ module Net
       unless string.start_with?(?") && string.end_with?(?")
         string = '"%s"' % [string]
       end
-      DateTime.strptime(string, STRFTIME)
+      DateTime.strptime(string, STRFTIME, Date::GREGORIAN)
     end
 
     # :call-seq: decode_time(string) -> Time

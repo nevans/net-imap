@@ -45,6 +45,8 @@ class IMAPDataEncodingTest < Test::Unit::TestCase
     assert_equal Date.new(2022, 10, 6), Net::IMAP.decode_date("06-Oct-2022")
     assert_equal Date.new(2022, 10, 6), Net::IMAP.decode_date('"06-Oct-2022"')
     assert_equal Date.new(2022, 10, 6), Net::IMAP.parse_date("06-Oct-2022")
+    assert_equal(Date.new(0, 1, 1, Date::GREGORIAN),
+                 Net::IMAP.parse_date("01-Jan-0000"))
   end
 
   def test_encode_datetime
@@ -63,6 +65,9 @@ class IMAPDataEncodingTest < Test::Unit::TestCase
     assert_equal expected, actual
     actual   = Net::IMAP.parse_datetime '" 6-Oct-2022 01:02:03 -0400"'
     assert_equal expected, actual
+    expected = DateTime.new(0, 1, 1, 0, 0, 0, "-00:00", Date::GREGORIAN)
+    actual   = Net::IMAP.decode_datetime "01-Jan-0000 00:00:00 -0000"
+    assert_equal expected, actual.to_datetime
   end
 
   def test_decode_time
@@ -72,6 +77,9 @@ class IMAPDataEncodingTest < Test::Unit::TestCase
     actual   = Net::IMAP.decode_time '" 7-Nov-2020 01:02:03 -0400"'
     assert_equal expected, actual
     actual   = Net::IMAP.parse_time "07-Nov-2020 01:02:03 -0400"
+    assert_equal expected, actual
+    expected = DateTime.new(0, 1, 1, 0, 0, 0, "-00:00", Date::GREGORIAN).to_time
+    actual   = Net::IMAP.decode_time "01-Jan-0000 00:00:00 -0000"
     assert_equal expected, actual
   end
 
