@@ -953,9 +953,12 @@ module Net
             when "MODSEQ"               then parens__modseq     # CONDSTORE
             when "EMAILID"              then parens__objectid   # OBJECTID
             when "THREADID"             then nparens__objectid  # OBJECTID
+            when "SAVEDATE"             then ndatetime          # SAVEDATE  TODO:tests, datetime
             when "X-GM-MSGID"           then x_gm_id            # GMail
             when "X-GM-THRID"           then x_gm_id            # GMail
             when "X-GM-LABELS"          then x_gm_labels        # GMail
+            when "PREVIEW"              then nstring            # PREVIEW   TODO:tests
+            when "ANNOTATION"           then annotate__msgatt   # ANNOTATE  TODO:...
             else parse_error("unknown attribute `%s' for {%d}", name, n)
             end
           attr[name] = val
