@@ -565,17 +565,10 @@ module Net
       end
 
       #   nstring         = string / nil
-      def nstring
-        NIL? ? nil : string
-      end
-
-      def nstring8
-        NIL? ? nil : string8
-      end
-
-      def nquoted
-        NIL? ? nil : quoted
-      end
+      def nstring;          NIL? ? nil : string   end
+      def nstring8;         NIL? ? nil : string8  end
+      def nquoted;          NIL? ? nil : quoted   end
+      def nil_or_number;    NIL? ? nil : number   end
 
       # use where nstring represents "LABEL" values
       def case_insensitive__nstring
@@ -1869,6 +1862,7 @@ module Net
           when "SIZE"          then number64            # RFC8483, RFC9051
           when "HIGHESTMODSEQ" then mod_sequence_valzer # RFC7162
           when "MAILBOXID"     then parens__objectid    # RFC8474
+          when "APPENDLIMIT"   then nil_or_number       # RFC7889
           else
             number? || ExtensionData.new(tagged_ext_val)
           end
