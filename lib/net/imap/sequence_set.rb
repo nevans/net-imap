@@ -302,7 +302,7 @@ module Net
         when SequenceSet            then true
         when Integer, Range, *STARS then true
         when String                 then REGEXP.match?(obj.b)
-        when Array, Set             then obj.all?(Coercible) && !obj.empty?
+        when Array, Set             then !obj.empty? && obj.all?(Coercible)
         else                             obj.respond_to?(:to_sequence_set)
         end
       end
@@ -319,7 +319,7 @@ module Net
         # Use ::new to create a mutable or empty SequenceSet.
         def [](first, *rest)
           if rest.empty?
-            if first.is_a?(SequenceSet) && set.frozen? && set.valid?
+            if first.is_a?(SequenceSet) && first.frozen? && first.valid?
               first
             else
               new(first).validate.freeze
