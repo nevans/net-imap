@@ -2020,8 +2020,8 @@ module Net
     #   result = imap.search(["SUBJECT", "hi there", "not", "new")
     #   #=> Net::IMAP::SearchResult[1, 6, 7, 8, modseq: 5594]
     #   result.modseq # => 5594
-    def search(keys, charset = nil)
-      return search_internal("SEARCH", keys, charset)
+    def search(...)
+      search_internal("SEARCH", ...)
     end
 
     # Sends a {UID SEARCH command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
@@ -2033,8 +2033,8 @@ module Net
     # capability has been enabled.
     #
     # See #search for documentation of search criteria.
-    def uid_search(keys, charset = nil)
-      return search_internal("UID SEARCH", keys, charset)
+    def uid_search(...)
+      search_internal("UID SEARCH", ...)
     end
 
     # :call-seq:
@@ -2869,7 +2869,7 @@ module Net
       end
     end
 
-    def search_internal(cmd, keys, charset)
+    def search_internal(cmd, keys, charset = nil)
       keys = normalize_searching_criteria(keys)
       args = charset ? ["CHARSET", charset, *keys] : keys
       synchronize do
