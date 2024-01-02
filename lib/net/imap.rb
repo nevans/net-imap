@@ -1983,7 +1983,8 @@ module Net
     end
 
     # :call-seq:
-    #   search(criteria, charset = nil, esearch: false) -> result
+    #   search(criteria = nil, return: nil, charset: nil, esearch: nil, **criteria) -> result
+    #   search(criteria, charset = nil) -> result
     #
     # Sends a {SEARCH command [IMAP4rev1 §6.4.4]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.4]
     # to search the mailbox for messages that match the given search +criteria+,
@@ -1992,7 +1993,8 @@ module Net
     # SearchResult#modseq when the +CONDSTORE+ capability has been enabled.
     #
     # +criteria+ is one or more search keys and their arguments, which may be
-    # provided as an array or a string.
+    # provided as an array, a hash, keyword arguments, or a string.  Keyword
+    # argument criteria may be combined with positional argument criteria.
     # See {"Search criteria"}[rdoc-ref:#search@Search+criteria], below.
     #
     # * When +criteria+ is an array, each member is a +SEARCH+ command argument:
@@ -2016,20 +2018,33 @@ module Net
     #   <em>without any validation or encoding</em>.  *WARNING:* This is
     #   vulnerable to injection attacks when external inputs are used.
     #
+    # * TODO: parse string and array values
+    # * When +criteria+ is RawData, TODO: replace String with RawData.
+    # * When +criteria+ is a hash, TODO: interpret hash-based criteria.
+    # * When +criteria+ is a kwarg, TODO: (like hash, but strictly for
+    #   supported standard search keys)
+    #
+    # +return+ controls what kind of information is returned about messages
+    # matching the search +criteria+.  Specifying +return+ should force the
+    # server to return an ESearchResult instead of a SearchResult, but some
+    # servers disobey this requirement.
+    #
     # +charset+ is the name of the {registered character
     # set}[https://www.iana.org/assignments/character-sets/character-sets.xhtml]
     # used by strings in the search +criteria+.  When +charset+ isn't specified,
     # either <tt>"US-ASCII"</tt> or <tt>"UTF-8"</tt> is assumed, depending on
     # the server's capabilities.
     #
-    # _NOTE:_ Return options and +charset+ may be sent as part of +criteria+.
+    # _NOTE:_ +return+ and +charset+ may be sent as part of +criteria+.
     # Do not use the +charset+ argument when either return options or charset
     # are embedded in +criteria+.
     #
     # +esearch+ controls the return type when the server does not return any
     # search results.  If +esearch+ is +true+ or +criteria+ begins with
     # +RETURN+, an empty ESearchResult will be returned.  When +esearch+ is
-    # +false+, an empty SearchResult will be returned.
+    # +false+, an empty SearchResult will be returned.  When +esearch+ is not
+    # provided, it will default to +true+ when a +return+ option has been
+    # specified.
     #
     # Related: #uid_search
     #
@@ -2040,6 +2055,11 @@ module Net
     #
     # The following searches send the exact same command to the server:
     #
+    #    # criteria array, charset keyword arg
+    #    imap.search(["OR", "UNSEEN", %w(FLAGGED SUBJECT foo)],
+    #                charset: "UTF-8")
+    #    # criteria string, charset keyword arg
+    #    imap.search("OR UNSEEN (FLAGGED SUBJECT foo)", charset: "UTF-8")
     #    # criteria array, charset arg
     #    imap.search(["OR", "UNSEEN", %w(FLAGGED SUBJECT foo)], "UTF-8")
     #    # criteria string, charset arg
@@ -2049,11 +2069,15 @@ module Net
     #    # criteria string contains charset arg
     #    imap.search("CHARSET UTF-8 OR UNSEEN (FLAGGED SUBJECT foo)")
     #
-    # Sending return optionsand charset embedded in the +crriteria+ arg:
+    # Sending return options and charset:
+    #    # criteria string can contain return options and charset
     #    imap.search("RETURN (MIN MAX) CHARSET UTF-8 (OR UNSEEN FLAGGED)")
+    #    # criteria array can contain return options and charset
     #    imap.search(["RETURN", %w(MIN MAX),
     #                 "CHARSET", "UTF-8",
     #                 %w(OR UNSEEN FLAGGED)])
+    #    # Use keyword args for order-independence
+    #    imap.search(%w(OR UNSEEN FLAGGED), return: %w(MIN MAX), charset: "UTF-8")
     #
     # ===== Search keys
     #
@@ -2245,8 +2269,8 @@ module Net
     #
     # ===== Capabilities
     #
-    # Return options should only be specified when the server supports
-    # +IMAP4rev2+ or an extension that allows them, such as +ESEARCH+.
+    # +return+ options can only be specified when the server supports +ESEARCH+
+    # or +IMAP4rev2+.
     #
     # When +IMAP4rev2+ is enabled, or when the server supports +IMAP4rev2+ but
     # not +IMAP4rev1+, ESearchResult is always returned instead of SearchResult.
