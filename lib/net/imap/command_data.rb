@@ -6,6 +6,7 @@ require_relative "errors"
 
 module Net
   class IMAP < Protocol
+    autoload :Search, "#{__dir__}/search"
 
     private
 
