@@ -182,6 +182,9 @@ module Net
         ATOMISH           = /#{ATOM_CHAR    - /[\[]/ }+/
         TAG               = /#{ASTRING_CHAR - /[+]/  }+/
 
+        # objectid = 1*255(ALPHA / DIGIT / "_" / "-")
+        OBJECTID          = /[a-zA-Z0-9_-]{1,255}/n
+
         # TEXT-CHAR       = <any CHAR except CR and LF>
         TEXT_CHAR         = CHAR - /[\r\n]/
 
