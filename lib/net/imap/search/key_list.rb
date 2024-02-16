@@ -41,7 +41,11 @@ module Net
           hash.flat_map { hash_entry_to_key _1, _2 }
         end
 
+         # TODO: OR
          # TODO: NOT, FUZZY
+         # TODO: HEADER
+         # TODO: MODSEQ
+         # TODO: ANNOTATE
          def hash_entry_to_key(key, value)
            return [] if value.nil?
            key in String | Symbol or
