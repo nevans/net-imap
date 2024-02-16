@@ -14,9 +14,14 @@ module Net
       end
 
       AndKey        = Class.new(KeyListKey)
+      OrKey         = Class.new(KeyListKey)
       SeqSetKey     = Data.define(:seqset)
       FlagKey       = Data.define(:name)
       UnaryKey      = Data.define(:name, :value)
+      HeaderKey     = Data.define(:field_name, :string)
+      ModSeqKey     = Data.define(:entry_name, :entry_type_req, :modseq)
+      AnnotationKey = Data.define(:entry_match, :att, :value)
+
       class FlagKey
         include KeyNameValidation
 
@@ -33,6 +38,7 @@ module Net
       end
 
       class AndKey
+        # TODO
       end
 
       class SeqSetKey
@@ -130,6 +136,33 @@ module Net
 
       class NzNumberKey < NumberKey
         known_names %w[  OLDER YOUNGER ] # Internal Date (WITHIN extension)
+      end
+
+      class HeaderKey
+        include KeyNameValidation
+        known_name "HEADER"
+        def initialize(name: "HEADER", **) super end
+      end
+
+      # MODSEQ (RFC7162)
+      class ModSeqKey
+        include KeyNameValidation
+        known_name "HEADER"
+        def initialize(name: "HEADER",
+                       entry_name: nil,
+                       entry_type_req: nil,
+                       modseq:)
+          super
+        end
+      end
+
+      # ANNOTATE-EXPERIMENT-1 (RFC5257)
+      class AnnotationKey
+        include KeyNameValidation
+        known_name "ANNOTATION"
+        def initialize(name: "ANNOTATION", **)
+          super
+        end
       end
 
     end
