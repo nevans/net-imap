@@ -16,6 +16,7 @@ class SearchTests < Test::Unit::TestCase
   Number64Key = Net::IMAP::Search::Number64Key
   NzNumberKey = Net::IMAP::Search::NzNumberKey
   ObjectIDKey = Net::IMAP::Search::ObjectIDKey
+  OrKey       = Net::IMAP::Search::OrKey
   SeqSetKey   = Net::IMAP::Search::SeqSetKey
   UIDKey      = Net::IMAP::Search::UIDKey
 
@@ -164,7 +165,24 @@ class SearchTests < Test::Unit::TestCase
       assert_raise DataFormatError do AndKey[]       end
       assert_raise DataFormatError do AndKey[nil]    end
       assert_raise DataFormatError do AndKey.new([]) end
-      # TODO: assert_raise DataFormatError do AndKey.new({}) end
+      assert_raise DataFormatError do AndKey.new({}) end
+    end
+  end
+
+  class OrKeyTests < Test::Unit::TestCase
+    test "#keys for one or more search keys" do
+      OrKey[123, 555] => OrKey[SeqSetKey[SequenceSet["123,555"]]]
+      OrKey["ALL", "56:78,*", "seen"] => OrKey[
+        FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"],
+      ]
+    end
+
+    test "invalid - no criteria" do
+      assert_raise ArgumentError   do OrKey.new     end
+      assert_raise DataFormatError do OrKey[]       end
+      assert_raise DataFormatError do OrKey[nil]    end
+      assert_raise DataFormatError do OrKey.new([]) end
+      assert_raise DataFormatError do OrKey.new({}) end
     end
   end
 
