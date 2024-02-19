@@ -41,6 +41,10 @@ module Net
         # TODO
       end
 
+      class OrKey
+        # TODO
+      end
+
       class SeqSetKey
         def initialize(seqset:)
           super seqset: SequenceSet[seqset]
