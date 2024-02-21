@@ -12,6 +12,7 @@ class SearchTests < Test::Unit::TestCase
   FilterKey   = Net::IMAP::Search::FilterKey
   FlagKey     = Net::IMAP::Search::FlagKey
   KeyList     = Net::IMAP::Search::KeyList
+  KeysHash    = Net::IMAP::Search::KeyList::KeysHash
   KeywordKey  = Net::IMAP::Search::KeywordKey
   Number64Key = Net::IMAP::Search::Number64Key
   NzNumberKey = Net::IMAP::Search::NzNumberKey
@@ -152,6 +153,49 @@ class SearchTests < Test::Unit::TestCase
     end
   end
 
+  class KeysHashTests < Test::Unit::TestCase
+    test "hash entries with true value passes only the key" do
+      input = {flagged: true, answered: true, seen: true}
+      keys_hash = KeysHash[input]
+      keys_hash.compacted => ^input
+      keys_hash.inputs => [:flagged, :answered, :seen]
+      keys_hash.keys => [
+        FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"]
+      ]
+    end
+
+    test "hash entries with false value passes only the UN-key" do
+      input = {flagged: false, answered: false, seen: false}
+      keys_hash = KeysHash[input]
+      keys_hash.compacted => ^input
+      keys_hash.inputs => [:unflagged, :unanswered, :unseen]
+      keys_hash.keys => [
+        FlagKey["UNFLAGGED"], FlagKey["UNANSWERED"], FlagKey["UNSEEN"]
+      ]
+    end
+
+    test "hash nil value passes nothing" do
+      input = {flagged: true, seq: nil, answered: nil, text: nil}
+      keys_hash = KeysHash[input]
+      keys_hash.compacted => {flagged: true, **nil}
+      keys_hash.inputs    => [:flagged]
+      keys_hash.keys      => [FlagKey["FLAGGED"]]
+    end
+
+    test "hash entries for unary search keys" do
+      input = {text: "отпуск"}
+      keys_hash = KeysHash[input]
+      keys_hash.compacted => ^input
+      keys_hash.inputs    => [[:text, "отпуск"]]
+      keys_hash.keys => [AstringKey["TEXT", "отпуск"]]
+
+      input = {on: "17-Feb-2024"}
+      keys_hash = KeysHash[input]
+      keys_hash.compacted => ^input
+      keys_hash.keys => [DateKey["ON", ^(Date.parse("2024-02-17"))]]
+    end
+  end
+
   class AndKeyTests < Test::Unit::TestCase
     test "#keys for one or more search keys" do
       AndKey["ALL", "56:78,*", "seen"] => AndKey[
@@ -176,6 +220,15 @@ class SearchTests < Test::Unit::TestCase
         AstringKey["SUBJECT", "foo"]
       ]
     end
+
+    # test "array elements are not flattened or combined" do
+    #   OrKey[123, 555] => OrKey[
+    #     SeqSetKey[SequenceSet["123"]], SeqSetKey[SequenceSet["555"]]
+    #   ]
+    #   OrKey["ALL", "56:78,*", "seen"] => OrKey[
+    #     FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"]
+    #   ]
+    # end
 
     test "invalid - no criteria" do
       assert_raise ArgumentError   do OrKey.new     end
