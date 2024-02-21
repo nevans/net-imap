@@ -16,11 +16,9 @@ module Net
 
         def extract_keys(keys)
           case keys
-          when SequenceSet::Coercible then [SeqSetKey[keys]]
-          when String, Symbol         then [FlagKey[keys]]
           when Array                  then keys_from_array(keys)
           when Hash                   then keys_from_hash(keys)
-          else invalid! keys.class
+          else invalid! "invalid search-key list: %p", keys.class
           end
             .tap do invalid! "empty search keys" if _1.empty? end
         end

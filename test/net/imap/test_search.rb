@@ -154,7 +154,6 @@ class SearchTests < Test::Unit::TestCase
 
   class AndKeyTests < Test::Unit::TestCase
     test "#keys for one or more search keys" do
-      AndKey[123, 555] => AndKey[SeqSetKey[SequenceSet["123,555"]]]
       AndKey["ALL", "56:78,*", "seen"] => AndKey[
         FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"],
       ]
@@ -171,9 +170,10 @@ class SearchTests < Test::Unit::TestCase
 
   class OrKeyTests < Test::Unit::TestCase
     test "#keys for one or more search keys" do
-      OrKey[123, 555] => OrKey[SeqSetKey[SequenceSet["123,555"]]]
-      OrKey["ALL", "56:78,*", "seen"] => OrKey[
-        FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"],
+      OrKey["56:78,*", "seen", {subject: "foo"}] => OrKey[
+        SeqSetKey[SequenceSet["56:78,*"]],
+        FlagKey["seen"],
+        AstringKey["SUBJECT", "foo"]
       ]
     end
 
