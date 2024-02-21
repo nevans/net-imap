@@ -38,11 +38,9 @@ module Net
       end
 
       class AndKey
-        # TODO
       end
 
       class OrKey
-        # TODO
       end
 
       class SeqSetKey
@@ -143,30 +141,17 @@ module Net
       end
 
       class HeaderKey
-        include KeyNameValidation
-        known_name "HEADER"
-        def initialize(name: "HEADER", **) super end
       end
 
       # MODSEQ (RFC7162)
       class ModSeqKey
-        include KeyNameValidation
-        known_name "HEADER"
-        def initialize(name: "HEADER",
-                       entry_name: nil,
-                       entry_type_req: nil,
-                       modseq:)
+        def initialize(entry_name: nil, entry_type_req: nil, modseq:)
           super
         end
       end
 
       # ANNOTATE-EXPERIMENT-1 (RFC5257)
       class AnnotationKey
-        include KeyNameValidation
-        known_name "ANNOTATION"
-        def initialize(name: "ANNOTATION", **)
-          super
-        end
       end
 
     end
