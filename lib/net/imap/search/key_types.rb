@@ -10,13 +10,14 @@ module Net
           ATOM        = /\A#{ResponseParser::Patterns::ATOM}\z/n
           ATOM_CHAR   = ResponseParser::Patterns::ATOM_CHAR
           FILTER_NAME = %r{\A[#{ATOM_CHAR.source}&&[^/]]+\z}n
+          OBJECTID    = /\A#{ResponseParser::Patterns::OBJECTID}\z/n
         end
 
         module Params
           String = ->(name, regexp) {
             ->(value) {
-              value = String.try_convert(value) or
-                raise TypeError, "expected String"
+              value = ::String.try_convert(value) or
+              raise TypeError, "expected String, got %s" % [value.class]
               value.b.match?(FORMAT) or
                 raise DataFormatError, "invalid filter-name string"
               value
@@ -36,34 +37,33 @@ module Net
           Name          = String["search-key name", Formats::ATOM]
           FlagKeyword   = String["flag-keyword",    Formats::ATOM]
           Astring       = String["astring",         Formats::ASTRING]
+          HeaderFldName = String["header-fld-name", Formats::ASTRING]
           FilterName    = String["filter-name",     Formats::FILTER_NAME]
+          ObjectID      = String["objectid",        Formats::OBJECTID]
           EnvelopeField = Astring
           FullText      = Astring
         end
 
         Nullary = Data.define(:name) do
-          include Key
           def initialize(name:) = super name: Params::Name[seqset]
         end
 
         def self.search_key(const_name, type = nil, &)
           const_name => Symbol
           attr_name = const_name.downcase
-          data_type = type ? unary_key(attr_name, type, &) : nullary_key(attr_name, &)
-          const_define const_name, data_type
+          data_type = type ?
+            unary_key(attr_name, type, &) : nullary_key(attr_name, &)
+          const_set const_name, data_type
         end
 
         def self.nullary_key(attr_name, &block)
           Data.define do
-            include Key
             define_method(:name) { attr_name }
           end
         end
 
         def self.unary_key(attr_name, type, &block)
           Data.define(attr_name) do
-            include Key
-
             define_method(:name) { attr_name }
             alias_method :value, attr_name
             define_method(:to_h) { { name => value } }
@@ -96,7 +96,7 @@ module Net
 
         bool_keys  :Keyword,    Params::FlagKeyword
 
-        search_key :Filter,     Params::Filter
+        search_key :Filter,     Params::FilterName
         search_key :EmailID,    Params::ObjectID
         search_key :ThreadID,   Params::ObjectID
 

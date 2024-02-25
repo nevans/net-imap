@@ -18,7 +18,6 @@ module Net
       SeqSetKey     = Data.define(:seqset)
       FlagKey       = Data.define(:name)
       UnaryKey      = Data.define(:name, :value)
-      HeaderKey     = Data.define(:field_name, :string)
       ModSeqKey     = Data.define(:entry_name, :entry_type_req, :modseq)
       AnnotationKey = Data.define(:entry_match, :att, :value)
 
@@ -140,7 +139,11 @@ module Net
         known_names %w[  OLDER YOUNGER ] # Internal Date (WITHIN extension)
       end
 
-      class HeaderKey
+      HeaderKey = Data.define(:field_name, :value) do
+        def initialize(field_name:, value:)
+          super field_name: KeyTypes::Params::HeaderFldName[field_name],
+                value:      KeyTypes::Params::Astring[value]
+        end
       end
 
       # MODSEQ (RFC7162)

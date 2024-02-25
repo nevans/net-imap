@@ -73,25 +73,25 @@ class SearchTests < Test::Unit::TestCase
 
   test "hash nil value passes nothing" do
     Search.new({flagged: true, seq: nil, answered: nil, text: nil}).keys => [
-      FlagKey["FLAGGED"],
+      FlagKey["FLAGGED"]
     ]
   end
 
   test "array args convert to parenthesized list (AndKey)" do
     Search.new(:flagged, [{seq: 123}, :seen], {subject: ""}).keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey,
+      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey
     ]
   end
 
   test "creating parenthesized list (AndKey)" do
     Search.new(:flagged, [{seq: 123}, :seen], {subject: ""}).keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey,
+      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey
     ]
     Search.new(flagged: true, and: [{seq: 123}, :seen], subject: "").keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey,
+      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey
     ]
     Search.new(flagged: true, and: {seq: 123, seen: true}).keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey],
+      FlagKey, AndKey[SeqSetKey, FlagKey]
     ]
   end
 
@@ -111,7 +111,7 @@ class SearchTests < Test::Unit::TestCase
 
     test "hash entries with true value passes only the key" do
       KeyList[{flagged: true, answered: true, seen: true}] => KeyList[
-        FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"],
+        FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"]
       ]
     end
 
@@ -192,7 +192,18 @@ class SearchTests < Test::Unit::TestCase
       input = {on: "17-Feb-2024"}
       keys_hash = KeysHash[input]
       keys_hash.compacted => ^input
+      keys_hash.inputs => [[:on, "17-Feb-2024"]]
       keys_hash.keys => [DateKey["ON", ^(Date.parse("2024-02-17"))]]
+    end
+
+    test "hash entries for simple nested search hashes" do
+      input = {header: {"sender" => "foo", "references" => "bar"}}
+      keys_hash = KeysHash[input]
+      keys_hash.compacted => ^input
+      keys_hash.inputs => [[:header, "sender", "foo"],
+                           [:header, "references", "bar"]]
+      # keys_hash.keys => [HeaderKey["sender", "foo"],
+      #                    HeaderKey["references", "bar"]]
     end
   end
 
