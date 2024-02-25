@@ -44,43 +44,59 @@ module Net
         class KeysHash
           def self.[](...) = new(...)
 
-          attr_reader :input
+          attr_reader :prefix, :input
 
           def initialize(*prefix, input)
+            @prefix = prefix
             @input = Hash.try_convert(input) or raise TypeError, "expected hash"
           end
 
-          def keys = compacted.flat_map { hash_entry_to_key _1, _2 }
+          def keys      = inputs.map         { input_to_key    _1, _2 }
+          def inputs    = compacted.flat_map { entry_to_inputs _1, _2 }
           def compacted = input.compact # TODO
 
-          def inputs
-            compacted.map {|key, value| # TODO: flat_map
-              case value
-              when true  then key
-              when false then key.is_a?(Symbol) ? :"un#{key}" : "UN#{key}"
-              else            [key, value]
-              end
-            }
+          private
+
+          def recursive?(name)
+            return true if name == :and
+            name = name.to_s
+            %w[OR NOT FUZZY].any? { _1.casecmp?(name) }
           end
 
-          private
+          def entry_to_inputs(key, value)
+            name = prefix.empty? ? key : prefix.first
+            name in String | Symbol or
+              raise TypeError, "expected string or symbol search-key name"
+            return [[*prefix, key, value]] if recursive?(name)
+            case value
+            when true  then prefix.empty? ? key : [[*prefix, key]]
+            when false then negate(*prefix, key)
+            when Hash  then KeysHash[*prefix, key, value].inputs
+            else            [[*prefix, key, value]]
+            end
+          end
+
+          def negate(name, *args)
+            name = name.is_a?(Symbol) ? :"un#{name}" : "UN#{name}"
+            [name, *args]
+          end
 
           # TODO: OR
           # TODO: NOT, FUZZY
           # TODO: HEADER
           # TODO: MODSEQ
           # TODO: ANNOTATE
-          def hash_entry_to_key(key, value)
-            return [] if value.nil?
+          def input_to_key(key, value)
             key in String | Symbol or
               raise TypeError, "expected string or symbol key"
             case key
             when :seq                   then SeqSetKey[value]
             when :and                   then AndKey.new(value)
             when UIDKey.match_name      then UIDKey[value]
-            when FlagKey.match_name     then FlagKey[bool_key(key, value)]
+            when FlagKey.match_name     then FlagKey[key]
             when DateKey.match_name     then DateKey[key, value]
             when AstringKey.match_name  then AstringKey[key, value]
+            when /\AHEADER\Z/i          then HeaderKey[key, value]
             when KeywordKey.match_name  then KeywordKey[key, value]
             when ObjectIDKey.match_name then ObjectIDKey[key, value]
             when FilterKey.match_name   then FilterKey[key, value]
