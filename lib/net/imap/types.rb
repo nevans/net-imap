@@ -20,7 +20,7 @@ module Net
         ->(value) {
           value = String.try_convert(value) or
           raise TypeError, "expected String, got %s" % [value.class]
-          value.b.match?(FORMAT) or
+          value.b.match?(regexp) or
             raise DataFormatError, "invalid filter-name string"
           value
         }
@@ -32,7 +32,7 @@ module Net
         elsif value.respond_to?(:to_str)
           value = IMAP.decode_date(value.to_str)
         end
-        value in Date or raise TypeError, "expected date"
+        value in ::Date or raise TypeError, "expected date"
         value
       }
 
