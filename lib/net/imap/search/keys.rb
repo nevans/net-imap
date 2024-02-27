@@ -4,22 +4,24 @@ module Net
   class IMAP < Protocol
     class Search
 
+      class Key < Data
+      end
+
       # A search-key (or pseudo-search-key) composed of a list of keys.
       class KeyListKey
-        attr_reader :key_list
-        def self.[](*keys)        = new keys
-        def initialize(keys)      = @key_list = KeyList.new(keys)
-        def keys                  = key_list.keys
-        def deconstruct           = key_list.deconstruct
+        def self.[](*keys)   = new keys
+        def initialize(keys) = @keys = KeyList.new(keys)
+        def keys             = @keys.keys
+        def deconstruct      = @keys.deconstruct
       end
 
       AndKey        = Class.new(KeyListKey)
       OrKey         = Class.new(KeyListKey)
-      SeqSetKey     = Data.define(:seqset)
-      FlagKey       = Data.define(:name)
-      UnaryKey      = Data.define(:name, :value)
-      ModSeqKey     = Data.define(:entry_name, :entry_type_req, :modseq)
-      AnnotationKey = Data.define(:entry_match, :att, :value)
+      SeqSetKey     = Key.define(:seqset)
+      FlagKey       = Key.define(:name)
+      UnaryKey      = Key.define(:name, :value)
+      ModSeqKey     = Key.define(:entry_name, :entry_type_req, :modseq)
+      AnnotationKey = Key.define(:entry_match, :att, :value)
 
       class FlagKey
         include KeyNameValidation
@@ -36,30 +38,19 @@ module Net
         known_name "SAVEDATESUPPORTED" # SAVEDATE [RFC8514]
       end
 
-      class AndKey
-      end
-
-      class OrKey
-      end
-
       class SeqSetKey
-        def initialize(seqset:)
-          super seqset: SequenceSet[seqset]
-        end
+        def initialize(seqset:) = super seqset: SequenceSet[seqset]
+      end
+
+      class UIDKey < SeqSetKey
+        def self.match_name = /UID/i
       end
 
       class UnaryKey
         include KeyNameValidation
         def initialize(name:, value:)
-          value = coerce_value(value)
-          validate_value(value)
-          super
+          super name:, value: coerce_value(value)
         end
-        def validate_value(value) = nil # assume coerce_value handles it...
-      end
-
-      class UIDKey < SeqSetKey
-        def self.match_name = /UID/i
       end
 
       class StringKey < UnaryKey
@@ -70,23 +61,23 @@ module Net
 
       class KeywordKey < StringKey
         known_names %w[KEYWORD UNKEYWORD]
-        def validate_value(value) = Types::FlagKeyword[value]
+        def coerce_value(value) = Types::FlagKeyword[value]
       end
 
       class AstringKey < StringKey
         known_names %w[ BCC CC FROM SUBJECT TO ]  # Envelope
         known_names %w[ BODY TEXT ]               # Full text search
-        def validate_value(value) = Types::Astring[value]
+        def coerce_value(value) = Types::Astring[value]
       end
 
       class ObjectIDKey < StringKey
         known_names %w[ EMAILID THREADID ]
-        def validate_value(value) = Types::ObjectID[value]
+        def coerce_value(value) = Types::ObjectID[value]
       end
 
       class FilterKey < StringKey
         known_name "FILTER"
-        def validate_value(value) = Types::FilterName[value]
+        def coerce_value(value) = Types::FilterName[value]
       end
 
       class DateKey < UnaryKey
@@ -117,7 +108,7 @@ module Net
 
       # MODSEQ (RFC7162)
       class ModSeqKey
-        def initialize(entry_name: nil, entry_type_req: nil, modseq:)
+        def initialize(modseq:, entry_name: nil, entry_type_req: nil)
           super
         end
       end
