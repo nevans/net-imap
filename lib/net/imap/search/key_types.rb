@@ -13,18 +13,21 @@ module Net
         def self.search_key(const_name, type = nil, &)
           const_name => Symbol
           attr_name = const_name.downcase
-          data_type = type ?
-            unary_key(attr_name, type, &) : nullary_key(attr_name, &)
+          data_type = if type
+                        unary_search_key(attr_name, type, &)
+                      else
+                        nullary_search_key(attr_name, &)
+                      end
           const_set const_name, data_type
         end
 
-        def self.nullary_key(attr_name, &block)
+        def self.nullary_search_key(attr_name, &block)
           Data.define do
             define_method(:name) { attr_name }
           end
         end
 
-        def self.unary_key(attr_name, type, &block)
+        def self.unary_search_key(attr_name, type, &block)
           Data.define(attr_name) do
             define_method(:name) { attr_name }
             alias_method :value, attr_name
@@ -39,24 +42,25 @@ module Net
           end
         end
 
-        def self.bool_keys(name, ...)
-          [search_key(name, ...),
-           search_key(:"Un#{name}", ...)]
-        end
-
         search_key :All
         search_key :SaveDateSupported
 
-        bool_keys :ANSWERED
-        bool_keys :DELETED
-        bool_keys :DRAFT
-        bool_keys :FLAGGED
-        bool_keys :SEEN
+        search_key :Answered
+        search_key :Unanswered
+        search_key :Deleted
+        search_key :Undeleted
+        search_key :Draft
+        search_key :Undraft
+        search_key :Flagged
+        search_key :Unflagged
+        search_key :Seen
+        search_key :Unseen
 
         search_key :Seq,        SequenceSet
         search_key :UID,        SequenceSet
 
-        bool_keys  :Keyword,    Types::FlagKeyword
+        search_key :Keyword,    Types::FlagKeyword
+        search_key :Unkeyword,  Types::FlagKeyword
 
         search_key :Filter,     Types::FilterName
         search_key :EmailID,    Types::ObjectID
@@ -69,8 +73,8 @@ module Net
         search_key :To,         Types::EnvelopeField
         search_key :Body,       Types::FullText
         search_key :Text,       Types::FullText
-      end
 
+      end
     end
   end
 end
