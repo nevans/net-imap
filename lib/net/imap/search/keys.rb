@@ -141,8 +141,8 @@ module Net
 
       HeaderKey = Data.define(:field_name, :value) do
         def initialize(field_name:, value:)
-          super field_name: KeyTypes::Params::HeaderFldName[field_name],
-                value:      KeyTypes::Params::Astring[value]
+          super field_name: Types::HeaderFldName[field_name],
+                value:      Types::Astring[value]
         end
       end
 

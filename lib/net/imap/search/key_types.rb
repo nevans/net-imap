@@ -5,47 +5,9 @@ module Net
     class Search
 
       module KeyTypes
-        module Formats
-          ASTRING     = /\A[^\0]*\z/n
-          ATOM        = /\A#{ResponseParser::Patterns::ATOM}\z/n
-          ATOM_CHAR   = ResponseParser::Patterns::ATOM_CHAR
-          FILTER_NAME = %r{\A[#{ATOM_CHAR.source}&&[^/]]+\z}n
-          OBJECTID    = /\A#{ResponseParser::Patterns::OBJECTID}\z/n
-        end
-
-        module Params
-          String = ->(name, regexp) {
-            ->(value) {
-              value = ::String.try_convert(value) or
-              raise TypeError, "expected String, got %s" % [value.class]
-              value.b.match?(FORMAT) or
-                raise DataFormatError, "invalid filter-name string"
-              value
-            }
-          }
-
-          Date = ->(value) {
-            if value.respond_to?(:to_date)
-              value = value.to_date
-            elsif value.respond_to?(:to_str)
-              value = IMAP.decode_date(value.to_str)
-            end
-            value in Date or raise TypeError, "expected date"
-            value
-          }
-
-          Name          = String["search-key name", Formats::ATOM]
-          FlagKeyword   = String["flag-keyword",    Formats::ATOM]
-          Astring       = String["astring",         Formats::ASTRING]
-          HeaderFldName = String["header-fld-name", Formats::ASTRING]
-          FilterName    = String["filter-name",     Formats::FILTER_NAME]
-          ObjectID      = String["objectid",        Formats::OBJECTID]
-          EnvelopeField = Astring
-          FullText      = Astring
-        end
 
         Nullary = Data.define(:name) do
-          def initialize(name:) = super name: Params::Name[seqset]
+          def initialize(name:) = super name: Types::SearchKeyName[seqset]
         end
 
         def self.search_key(const_name, type = nil, &)
@@ -94,19 +56,19 @@ module Net
         search_key :Seq,        SequenceSet
         search_key :UID,        SequenceSet
 
-        bool_keys  :Keyword,    Params::FlagKeyword
+        bool_keys  :Keyword,    Types::FlagKeyword
 
-        search_key :Filter,     Params::FilterName
-        search_key :EmailID,    Params::ObjectID
-        search_key :ThreadID,   Params::ObjectID
+        search_key :Filter,     Types::FilterName
+        search_key :EmailID,    Types::ObjectID
+        search_key :ThreadID,   Types::ObjectID
 
-        search_key :Bcc,        Params::EnvelopeField
-        search_key :Cc,         Params::EnvelopeField
-        search_key :From,       Params::EnvelopeField
-        search_key :Subject,    Params::EnvelopeField
-        search_key :To,         Params::EnvelopeField
-        search_key :Body,       Params::FullText
-        search_key :Text,       Params::FullText
+        search_key :Bcc,        Types::EnvelopeField
+        search_key :Cc,         Types::EnvelopeField
+        search_key :From,       Types::EnvelopeField
+        search_key :Subject,    Types::EnvelopeField
+        search_key :To,         Types::EnvelopeField
+        search_key :Body,       Types::FullText
+        search_key :Text,       Types::FullText
       end
 
     end
