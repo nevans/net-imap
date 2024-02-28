@@ -43,6 +43,9 @@ module Net
       }
 
       TaggedExtLabel = LabelType["tagged-ext-label"]
+
+      # Although no specification explicitly requires search-key extensions to
+      # use the tagged-ext-label format, using another format seems unlikely.
       SearchKeyName  = LabelType["search-key name"]
 
       FlagKeyword   = StringType["flag-keyword",    Formats::ATOM]

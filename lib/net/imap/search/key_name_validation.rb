@@ -5,9 +5,6 @@ module Net
     class Search
 
       module KeyNameValidation
-        # Although no specification explicitly requires search-key extensions to
-        # use the tagged-ext-label format, using another format seems unlikely.
-        FORMAT = /\A#{ResponseParser::Patterns::TAGGED_EXT_LABEL}\z/i
 
         def self.included(mod)
           mod.extend ClassMethods
@@ -35,10 +32,7 @@ module Net
           end
 
           def validate_name!(name)
-            name in String | Symbol or
-              raise TypeError, "expected String or Symbol"
-            FORMAT.match?(name) or
-              raise DataFormatError, "invalid search-key name"
+            Types::SearchKeyName[name]
             case name
             when method(:known_name?)
               name.is_a?(Symbol) ? name.upcase.name : -name
