@@ -8,11 +8,10 @@ module Net
       end
 
       # A search-key (or pseudo-search-key) composed of a list of keys.
-      class KeyListKey
-        def self.[](*keys)   = new keys
-        def initialize(keys) = @keys = KeyList.new(keys)
-        def keys             = @keys.keys
-        def deconstruct      = @keys.deconstruct
+      class KeyListKey < Key.define(:keys)
+        def self.[](*keys)    = new(keys:)
+        def initialize(keys:) = super keys: KeyList.new(keys).keys
+        def deconstruct       = keys.deconstruct
       end
 
       AndKey        = Class.new(KeyListKey)
