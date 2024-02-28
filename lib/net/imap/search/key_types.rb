@@ -6,7 +6,7 @@ module Net
 
       module KeyTypes
 
-        Nullary = Data.define(:name) do
+        Nullary = Key.define(:name) do
           def initialize(name:) = super name: Types::SearchKeyName[seqset]
         end
 
@@ -22,13 +22,13 @@ module Net
         end
 
         def self.nullary_search_key(attr_name, &block)
-          Data.define do
+          Key.define do
             define_method(:name) { attr_name }
           end
         end
 
         def self.unary_search_key(attr_name, type, &block)
-          Data.define(attr_name) do
+          Key.define(attr_name) do
             define_method(:name) { attr_name }
             alias_method :value, attr_name
             define_method(:to_h) { { name => value } }

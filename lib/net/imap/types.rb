@@ -9,17 +9,23 @@ module Net
     module Types # :nodoc: all
 
       module Formats
+        atom_char   = ResponseParser::Patterns::ATOM_CHAR
         ASTRING     = /\A[^\0]*\z/n
         ATOM        = /\A#{ResponseParser::Patterns::ATOM}\z/n
-        ATOM_CHAR   = ResponseParser::Patterns::ATOM_CHAR
-        FILTER_NAME = %r{\A[#{ATOM_CHAR.source}&&[^/]]+\z}n
+        FILTER_NAME = %r{\A[#{atom_char.source}&&[^/]]+\z}n
+        LABEL       = /\A#{ResponseParser::Patterns::TAGGED_EXT_LABEL}\z/n
         OBJECTID    = /\A#{ResponseParser::Patterns::OBJECTID}\z/n
       end
+
+      LabelType = ->(name, regexp = Formats::LABEL) {
+        validation = StringType[name, regexp]
+        ->(value) { validation[value.is_a?(Symbol) ? value.to_s : value] }
+      }
 
       StringType = ->(name, regexp) {
         ->(value) {
           value = String.try_convert(value) or
-          raise TypeError, "expected String, got %s" % [value.class]
+            raise TypeError, "expected String, got %s" % [value.class]
           value.b.match?(regexp) or
             raise DataFormatError, "invalid filter-name string"
           value
@@ -36,7 +42,9 @@ module Net
         value
       }
 
-      SearchKeyName = StringType["search-key name", Formats::ATOM]
+      TaggedExtLabel = LabelType["tagged-ext-label"]
+      SearchKeyName  = LabelType["search-key name"]
+
       FlagKeyword   = StringType["flag-keyword",    Formats::ATOM]
       Astring       = StringType["astring",         Formats::ASTRING]
       HeaderFldName = StringType["header-fld-name", Formats::ASTRING]
