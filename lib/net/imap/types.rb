@@ -27,7 +27,7 @@ module Net
           value = String.try_convert(value) or
             raise TypeError, "expected String, got %s" % [value.class]
           value.b.match?(regexp) or
-            raise DataFormatError, "invalid filter-name string"
+            raise DataFormatError, "invalid #{name} string"
           value
         }
       }
