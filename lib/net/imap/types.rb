@@ -32,6 +32,17 @@ module Net
         }
       }
 
+      NumberType = ->(name, min:, bits:) {
+        [name, min, bits] => [String, 0 | 1, Integer]
+        range = (min.zero? ? 0 : 1)..(2**bits - 1)
+        desc  = "#{min.zero? ? "a non-zero" : "an"} unsigned integer"
+        ->(num) {
+          num = Integer(num)
+          range.cover?(num) or raise DataFormatError, "#{name} must be #{desc}"
+          num
+        }
+      }
+
       Date = ->(value) {
         if value.respond_to?(:to_date)
           value = value.to_date
@@ -55,6 +66,11 @@ module Net
       ObjectID      = StringType["objectid",        Formats::OBJECTID]
       EnvelopeField = Astring
       FullText      = Astring
+
+      Number            = NumberType["number",              min: 0, bits: 32]
+      NzNumber          = NumberType["nz-number",           min: 1, bits: 32]
+      ModSequenceValue  = NumberType["mod-sequence-value",  min: 1, bits: 63]
+      ModSequenceValzer = NumberType["mod-sequence-valzer", min: 0, bits: 63]
 
     end
   end
