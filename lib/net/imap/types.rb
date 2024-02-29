@@ -72,6 +72,10 @@ module Net
       ModSequenceValue  = NumberType["mod-sequence-value",  min: 1, bits: 63]
       ModSequenceValzer = NumberType["mod-sequence-valzer", min: 0, bits: 63]
 
+      EntryName    = StringType["search-modseq-ext entry-name", Formats::ASTRING]
+      EntryTypeReq = StringType["search-modseq-ext entry-type-req",
+                                /\A(?:all|priv|shared)\z/i]
+
     end
   end
 end
