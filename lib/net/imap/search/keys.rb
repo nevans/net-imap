@@ -19,8 +19,6 @@ module Net
       SeqSetKey     = Key.define(:seqset)
       FlagKey       = Key.define(:name)
       UnaryKey      = Key.define(:name, :value)
-      ModSeqKey     = Key.define(:entry_name, :entry_type_req, :modseq)
-      AnnotationKey = Key.define(:entry_match, :att, :value)
 
       class FlagKey
         include KeyNameValidation
@@ -98,7 +96,7 @@ module Net
         known_names %w[  OLDER YOUNGER ] # Internal Date (WITHIN extension)
       end
 
-      HeaderKey = Data.define(:field_name, :value) do
+      class HeaderKey < Key.define(:field_name, :value)
         def initialize(field_name:, value:)
           super field_name: Types::HeaderFldName[field_name],
                 value:      Types::Astring[value]
@@ -106,14 +104,25 @@ module Net
       end
 
       # MODSEQ (RFC7162)
-      class ModSeqKey
+      class ModSeqKey < Key.define(:entry_name, :entry_type_req, :modseq)
+        def self.[](*args, **kwargs)
+          (args in [modseq]) ? super(nil, nil, modseq, **kwargs) : super
+        end
+
         def initialize(modseq:, entry_name: nil, entry_type_req: nil)
+          unless entry_name.nil? && entry_type_req.nil?
+            entry_name     = Types::EntryName[entry_name]
+            entry_type_req = Types::EntryTypeReq[entry_type_req]
+          end
+          modseq = Types::ModSequenceValzer[modseq]
           super
         end
+
+        def deconstruct = super.compact
       end
 
       # ANNOTATE-EXPERIMENT-1 (RFC5257)
-      class AnnotationKey
+      class AnnotationKey < Key.define(:entry_match, :att, :value)
       end
 
     end
