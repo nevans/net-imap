@@ -116,22 +116,6 @@ module Net
             end
           end
 
-          #  def generic_search_key_args(label, value)
-          #    label = search_key_label label
-          #    case value
-          #    when true  then [label]
-          #    when false then ["UN#{label}"]
-          #    when String, Date, Time, Integer, RawData
-          #      [label, value]
-          #    when SequenceSet::Coercible
-          #      [label, SequenceSet[value]]
-          #    when Hash
-          #      higher_arity_to_args(label, value)
-          #    else
-          #      raise DataFormatError, "unknown search-key: %p => %p" % [label, value]
-          #    end
-          #  end
-
         end
 
       end
