@@ -7,7 +7,7 @@ module Net
       module KeyTypes
 
         Nullary = Key.define(:name) do
-          def initialize(name:) = super name: Types::SearchKeyName[seqset]
+          def initialize(name:) = super name: Types::SearchKeyName[name]
         end
 
         def self.search_key(const_name, type = nil, &)
@@ -22,9 +22,7 @@ module Net
         end
 
         def self.nullary_search_key(attr_name, &block)
-          Key.define do
-            define_method(:name) { attr_name }
-          end
+          Nullary[attr_name]
         end
 
         def self.unary_search_key(attr_name, type, &block)
