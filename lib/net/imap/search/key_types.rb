@@ -16,13 +16,9 @@ module Net
           data_type = if type
                         unary_search_key(attr_name, type, &)
                       else
-                        nullary_search_key(attr_name, &)
+                        Nullary[attr_name]
                       end
           const_set const_name, data_type
-        end
-
-        def self.nullary_search_key(attr_name, &block)
-          Nullary[attr_name]
         end
 
         def self.unary_search_key(attr_name, type, &block)
