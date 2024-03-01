@@ -34,7 +34,7 @@ module Net
           def validate_name!(name)
             Types::SearchKeyName[name]
             case name
-            when method(:known_name?)
+            when -> { known_name? _1 }
               name.is_a?(Symbol) ? name.upcase.name : -name
             when String
               warn("Possibly invalid search key: #{name}.  " \
@@ -42,7 +42,7 @@ module Net
                    "`#{self}.known_name #{name.dump}`")
               -name
             when Symbol
-              raise DataFormatError, "unknown flag search-key: %p" % [name]
+              raise DataFormatError, "unknown search-key: %p" % [name]
             end
           end
         end
