@@ -92,6 +92,7 @@ module Net
             case key
             when :seq                   then SeqSetKey[value]
             when :and                   then AndKey.new(value)
+            when :all                   then KeyTypes::All[]
             when UIDKey.match_name      then UIDKey[value]
             when FlagKey.match_name     then FlagKey[key]
             when DateKey.match_name     then DateKey[key, value]

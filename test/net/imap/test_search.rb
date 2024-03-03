@@ -6,13 +6,15 @@ require "test/unit"
 class SearchTests < Test::Unit::TestCase
   Search     = Net::IMAP::Search
 
+  KeysHash    = Net::IMAP::Search::KeyList::KeysHash
+
   AndKey      = Net::IMAP::Search::AndKey
   AstringKey  = Net::IMAP::Search::AstringKey
   DateKey     = Net::IMAP::Search::DateKey
   FilterKey   = Net::IMAP::Search::FilterKey
   FlagKey     = Net::IMAP::Search::FlagKey
   KeyList     = Net::IMAP::Search::KeyList
-  KeysHash    = Net::IMAP::Search::KeyList::KeysHash
+  KeyTypes    = Net::IMAP::Search::KeyTypes
   KeywordKey  = Net::IMAP::Search::KeywordKey
   Number64Key = Net::IMAP::Search::Number64Key
   NzNumberKey = Net::IMAP::Search::NzNumberKey
@@ -155,12 +157,12 @@ class SearchTests < Test::Unit::TestCase
 
   class KeysHashTests < Test::Unit::TestCase
     test "hash entries with true value passes only the key" do
-      input = {flagged: true, answered: true, seen: true}
+      input = {all: true, flagged: true, answered: true, seen: true}
       keys_hash = KeysHash[input]
       keys_hash.compacted => ^input
-      keys_hash.inputs => [:flagged, :answered, :seen]
+      keys_hash.inputs => [:all, :flagged, :answered, :seen]
       keys_hash.keys => [
-        FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"]
+        KeyTypes::All, FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"]
       ]
     end
 
