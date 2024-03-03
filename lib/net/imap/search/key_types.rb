@@ -5,35 +5,41 @@ module Net
     class Search
 
       module KeyTypes
+        @mapping = {}
 
-        Nullary = Key.define(:name) do
-          def initialize(name:) = super name: Types::SearchKeyName[name]
-        end
+        def [](attr_name) @mapping[attr_name.downcase.to_sym] end
 
         def self.search_key(const_name, type = nil, &)
-          const_name => Symbol
           attr_name = const_name.downcase
           data_type = if type
                         unary_search_key(attr_name, type, &)
                       else
-                        Nullary[attr_name]
+                        nullary(attr_name.to_s, &)
                       end
           const_set const_name, data_type
+          @mapping[attr_name] = data_type
         end
 
-        def self.unary_search_key(attr_name, type, &block)
-          Key.define(attr_name) do
-            define_method(:name) { attr_name }
-            alias_method :value, attr_name
-            define_method(:to_h) { { name => value } }
+        class NullaryKey < Key
+          def value = true
+        end
 
+        def self.nullary(name, &block)
+          NullaryKey.define_with_name(name:, &block)
+        end
+
+        class UnaryKey < Key
+          def self.value = deconstruct.first
+        end
+
+        def self.unary_search_key(attr, type, &block)
+          Key.define_with_name(attr, name: attr.to_s) do
             define_method :initialize do |**kwargs|
-              kwargs[attr_name] = type[kwargs.fetch(attr_name)]
-              super
+              kwargs[attr] = type[kwargs.fetch(attr)]
+              super(**kwargs)
             end
-
-            class_eval(&block) if block
           end
+            .then { block ? Class.new(_1, &block) : _1 }
         end
 
         search_key :All
@@ -50,7 +56,11 @@ module Net
         search_key :Seen
         search_key :Unseen
 
-        search_key :Seq,        SequenceSet
+        search_key :Seq, SequenceSet do
+          def name = key
+          def to_a = [seq]
+        end
+
         search_key :UID,        SequenceSet
 
         search_key :Keyword,    Types::FlagKeyword
@@ -69,6 +79,7 @@ module Net
         search_key :Text,       Types::FullText
 
       end
+
     end
   end
 end

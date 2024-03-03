@@ -4,7 +4,29 @@ module Net
   class IMAP < Protocol
     class Search
 
+      KeyName = ->(name) {
+        key  = Types::SearchKeyName[name].to_sym.downcase
+        name = key.upcase.name unless name == key
+        Module.new do
+          singleton_class.define_method(:to_s) {
+            "%s::KeyName[%p]" % [Search, name]
+          }
+          define_method(:key)  { key  }
+          define_method(:name) { name }
+        end
+      }
+
       class Key < Data
+        def self.define_with_name(*attrs, name:, &block)
+          define(*attrs) do
+            extend KeyName[name]
+          end
+        end
+
+        def to_a = [name, *deconstruct]
+        def to_h = {key => value}
+        def name = self.class.name
+        def key  = self.class.key
       end
 
       # A search-key (or pseudo-search-key) composed of a list of keys.
@@ -17,9 +39,9 @@ module Net
       AndKey        = Class.new(KeyListKey)
       OrKey         = Class.new(KeyListKey)
       SeqSetKey     = Key.define(:seqset)
-      FlagKey       = Key.define(:name)
       UnaryKey      = Key.define(:name, :value)
 
+      FlagKey       = Key.define(:name)
       class FlagKey
         include KeyNameValidation
 
