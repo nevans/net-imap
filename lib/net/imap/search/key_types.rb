@@ -35,7 +35,7 @@ module Net
         def self.unary_search_key(attr, type, &block)
           Key.define_with_name(attr, name: attr.to_s) do
             define_method :initialize do |**kwargs|
-              kwargs[attr] = type[kwargs.fetch(attr)]
+              kwargs[attr] &&= type[kwargs[attr]]
               super(**kwargs)
             end
           end
@@ -56,6 +56,9 @@ module Net
         search_key :Seen
         search_key :Unseen
 
+        search_key :Keyword,    Types::FlagKeyword
+        search_key :Unkeyword,  Types::FlagKeyword
+
         search_key :Seq, SequenceSet do
           def name = key
           def to_a = [seq]
@@ -63,10 +66,8 @@ module Net
 
         search_key :UID,        SequenceSet
 
-        search_key :Keyword,    Types::FlagKeyword
-        search_key :Unkeyword,  Types::FlagKeyword
-
         search_key :Filter,     Types::FilterName
+
         search_key :EmailID,    Types::ObjectID
         search_key :ThreadID,   Types::ObjectID
 

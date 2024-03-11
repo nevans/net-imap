@@ -155,14 +155,74 @@ class SearchTests < Test::Unit::TestCase
     end
   end
 
+  class KeyTypesTests < Test::Unit::TestCase
+    All               = KeyTypes::All
+    SaveDateSupported = KeyTypes::SaveDateSupported
+
+    Answered          = KeyTypes::Answered
+    Deleted           = KeyTypes::Deleted
+    Flagged           = KeyTypes::Flagged
+    Draft             = KeyTypes::Draft
+    Seen              = KeyTypes::Seen
+
+    Unanswered        = KeyTypes::Unanswered
+    Undeleted         = KeyTypes::Undeleted
+    Unflagged         = KeyTypes::Unflagged
+    Undraft           = KeyTypes::Undraft
+    Unseen            = KeyTypes::Unseen
+
+    Keyword           = KeyTypes::Keyword
+    Unkeyword         = KeyTypes::Unkeyword
+
+    Seq               = KeyTypes::Seq
+    UID               = KeyTypes::UID
+
+    Filter            = KeyTypes::Filter
+
+    EmailID           = KeyTypes::EmailID
+    ThreadID          = KeyTypes::ThreadID
+
+    test "#to_a" do
+      assert_equal %w[ALL],               All[].to_a
+      assert_equal %w[SAVEDATESUPPORTED], SaveDateSupported[].to_a
+
+      assert_equal %w[ANSWERED],          Answered[].to_a
+      assert_equal %w[DELETED],           Deleted[].to_a
+      assert_equal %w[FLAGGED],           Flagged[].to_a
+      assert_equal %w[DRAFT],             Draft[].to_a
+      assert_equal %w[SEEN],              Seen[].to_a
+      assert_equal %w[UNANSWERED],        Unanswered[].to_a
+      assert_equal %w[UNDELETED],         Undeleted[].to_a
+      assert_equal %w[UNDRAFT],           Undraft[].to_a
+      assert_equal %w[UNFLAGGED],         Unflagged[].to_a
+      assert_equal %w[UNSEEN],            Unseen[].to_a
+
+      input = 1, 3..5, 33, -1
+      seqset = Net::IMAP::SequenceSet[input]
+      assert_equal [seqset],        Seq[input].to_a
+      assert_equal ["UID", seqset], UID[input].to_a
+
+      assert_equal %w[KEYWORD   $Forwarded], Keyword["$Forwarded"].to_a
+      assert_equal %w[UNKEYWORD $MDNSent],   Unkeyword["$MDNSent"].to_a
+
+      assert_equal %w[FILTER on-the-road], Filter["on-the-road"].to_a
+
+      assert_equal %w[EMAILID  msg-123-abc],  EmailID["msg-123-abc"].to_a
+      assert_equal %w[THREADID thd-abc-123],  ThreadID["thd-abc-123"].to_a
+    end
+  end
+
   class KeysHashTests < Test::Unit::TestCase
     test "hash entries with true value passes only the key" do
       input = {all: true, flagged: true, answered: true, seen: true}
       keys_hash = KeysHash[input]
-      keys_hash.compacted => ^input
+      assert_equal input, keys_hash.compacted
       keys_hash.inputs => [:all, :flagged, :answered, :seen]
       keys_hash.keys => [
-        KeyTypes::All, FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"]
+        KeyTypes::All,
+        FlagKey["FLAGGED"],
+        FlagKey["ANSWERED"],
+        FlagKey["SEEN"]
       ]
     end
 

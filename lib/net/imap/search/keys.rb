@@ -20,6 +20,7 @@ module Net
         def self.define_with_name(*attrs, name:, &block)
           define(*attrs) do
             extend KeyName[name]
+            class_exec(&block) if block
           end
         end
 
