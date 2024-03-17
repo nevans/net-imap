@@ -7,17 +7,17 @@ module Net
       module KeyTypes
         @mapping = {}
 
-        def [](attr_name) @mapping[attr_name.downcase.to_sym] end
+        def [](key_name) @mapping[key_name.downcase.to_sym] end
 
         def self.search_key(const_name, type = nil, &)
-          attr_name = const_name.downcase
-          data_type = if type
-                        unary_search_key(attr_name, type, &)
-                      else
-                        nullary(attr_name.to_s, &)
-                      end
-          const_set const_name, data_type
-          @mapping[attr_name] = data_type
+          key_name = const_name.to_sym.downcase
+          type = case type
+          when nil  then nullary(key_name.to_s, &)
+          when Hash then n_ary_search_key(key_name, type, &)
+          else           unary_search_key(key_name, type, &)
+          end
+          const_set const_name, type
+          @mapping[key_name] = type
         end
 
         class NullaryKey < Key
@@ -32,10 +32,25 @@ module Net
           def self.value = deconstruct.first
         end
 
-        def self.unary_search_key(attr, type, &block)
-          Key.define_with_name(attr, name: attr.to_s) do
+        def self.unary_search_key(name, type, &block)
+          attr = name.to_sym.downcase
+          UnaryKey.define_with_name(attr, name: name.to_s) do
             define_method :initialize do |**kwargs|
               kwargs[attr] &&= type[kwargs[attr]]
+              super(**kwargs)
+            end
+          end
+            .then { block ? Class.new(_1, &block) : _1 }
+        end
+
+        def self.n_ary_search_key(name, types, &block)
+          attrs = types.keys
+          types = types.compact
+          Key.define_with_name(*attrs, name: name.to_s) do
+            define_method :initialize do |**kwargs|
+              types.each do |attr, type|
+                kwargs[attr] &&= type[kwargs[attr]]
+              end
               super(**kwargs)
             end
           end
@@ -71,13 +86,18 @@ module Net
         search_key :EmailID,    Types::ObjectID
         search_key :ThreadID,   Types::ObjectID
 
-        search_key :Bcc,        Types::EnvelopeField
-        search_key :Cc,         Types::EnvelopeField
         search_key :From,       Types::EnvelopeField
-        search_key :Subject,    Types::EnvelopeField
         search_key :To,         Types::EnvelopeField
+        search_key :Cc,         Types::EnvelopeField
+        search_key :Bcc,        Types::EnvelopeField
+        search_key :Subject,    Types::EnvelopeField
+
         search_key :Body,       Types::FullText
         search_key :Text,       Types::FullText
+
+        search_key :Header,
+          field_name: Types::HeaderFldName,
+          string:     Types::Astring
 
       end
 

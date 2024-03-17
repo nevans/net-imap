@@ -14,7 +14,6 @@ class SearchTests < Test::Unit::TestCase
   FilterKey   = Net::IMAP::Search::FilterKey
   FlagKey     = Net::IMAP::Search::FlagKey
   KeyList     = Net::IMAP::Search::KeyList
-  KeyTypes    = Net::IMAP::Search::KeyTypes
   KeywordKey  = Net::IMAP::Search::KeywordKey
   Number64Key = Net::IMAP::Search::Number64Key
   NzNumberKey = Net::IMAP::Search::NzNumberKey
@@ -156,59 +155,83 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class KeyTypesTests < Test::Unit::TestCase
-    All               = KeyTypes::All
-    SaveDateSupported = KeyTypes::SaveDateSupported
+    All               = Net::IMAP::Search::KeyTypes::All
+    SaveDateSupported = Net::IMAP::Search::KeyTypes::SaveDateSupported
 
-    Answered          = KeyTypes::Answered
-    Deleted           = KeyTypes::Deleted
-    Flagged           = KeyTypes::Flagged
-    Draft             = KeyTypes::Draft
-    Seen              = KeyTypes::Seen
+    Answered          = Net::IMAP::Search::KeyTypes::Answered
+    Deleted           = Net::IMAP::Search::KeyTypes::Deleted
+    Flagged           = Net::IMAP::Search::KeyTypes::Flagged
+    Draft             = Net::IMAP::Search::KeyTypes::Draft
+    Seen              = Net::IMAP::Search::KeyTypes::Seen
 
-    Unanswered        = KeyTypes::Unanswered
-    Undeleted         = KeyTypes::Undeleted
-    Unflagged         = KeyTypes::Unflagged
-    Undraft           = KeyTypes::Undraft
-    Unseen            = KeyTypes::Unseen
+    Unanswered        = Net::IMAP::Search::KeyTypes::Unanswered
+    Undeleted         = Net::IMAP::Search::KeyTypes::Undeleted
+    Unflagged         = Net::IMAP::Search::KeyTypes::Unflagged
+    Undraft           = Net::IMAP::Search::KeyTypes::Undraft
+    Unseen            = Net::IMAP::Search::KeyTypes::Unseen
 
-    Keyword           = KeyTypes::Keyword
-    Unkeyword         = KeyTypes::Unkeyword
+    Keyword           = Net::IMAP::Search::KeyTypes::Keyword
+    Unkeyword         = Net::IMAP::Search::KeyTypes::Unkeyword
 
-    Seq               = KeyTypes::Seq
-    UID               = KeyTypes::UID
+    Seq               = Net::IMAP::Search::KeyTypes::Seq
+    UID               = Net::IMAP::Search::KeyTypes::UID
 
-    Filter            = KeyTypes::Filter
+    Filter            = Net::IMAP::Search::KeyTypes::Filter
 
-    EmailID           = KeyTypes::EmailID
-    ThreadID          = KeyTypes::ThreadID
+    EmailID           = Net::IMAP::Search::KeyTypes::EmailID
+    ThreadID          = Net::IMAP::Search::KeyTypes::ThreadID
+
+    From              = Net::IMAP::Search::KeyTypes::From
+    To                = Net::IMAP::Search::KeyTypes::To
+    Cc                = Net::IMAP::Search::KeyTypes::Cc
+    Bcc               = Net::IMAP::Search::KeyTypes::Bcc
+    Subject           = Net::IMAP::Search::KeyTypes::Subject
+    Body              = Net::IMAP::Search::KeyTypes::Body
+    Text              = Net::IMAP::Search::KeyTypes::Text
+
+    Header            = Net::IMAP::Search::KeyTypes::Header
 
     test "#to_a" do
-      assert_equal %w[ALL],               All[].to_a
-      assert_equal %w[SAVEDATESUPPORTED], SaveDateSupported[].to_a
-
-      assert_equal %w[ANSWERED],          Answered[].to_a
-      assert_equal %w[DELETED],           Deleted[].to_a
-      assert_equal %w[FLAGGED],           Flagged[].to_a
-      assert_equal %w[DRAFT],             Draft[].to_a
-      assert_equal %w[SEEN],              Seen[].to_a
-      assert_equal %w[UNANSWERED],        Unanswered[].to_a
-      assert_equal %w[UNDELETED],         Undeleted[].to_a
-      assert_equal %w[UNDRAFT],           Undraft[].to_a
-      assert_equal %w[UNFLAGGED],         Unflagged[].to_a
-      assert_equal %w[UNSEEN],            Unseen[].to_a
-
       input = 1, 3..5, 33, -1
       seqset = Net::IMAP::SequenceSet[input]
-      assert_equal [seqset],        Seq[input].to_a
-      assert_equal ["UID", seqset], UID[input].to_a
+      assert_equal [seqset],                    Seq[input].to_a
+      assert_equal ["UID", seqset],             UID[input].to_a
 
-      assert_equal %w[KEYWORD   $Forwarded], Keyword["$Forwarded"].to_a
-      assert_equal %w[UNKEYWORD $MDNSent],   Unkeyword["$MDNSent"].to_a
+      assert_equal %w[ALL],                     All[].to_a
+      assert_equal %w[SAVEDATESUPPORTED],       SaveDateSupported[].to_a
 
-      assert_equal %w[FILTER on-the-road], Filter["on-the-road"].to_a
+      assert_equal %w[ANSWERED],                Answered[].to_a
+      assert_equal %w[DELETED],                 Deleted[].to_a
+      assert_equal %w[FLAGGED],                 Flagged[].to_a
+      assert_equal %w[DRAFT],                   Draft[].to_a
+      assert_equal %w[SEEN],                    Seen[].to_a
+      assert_equal %w[UNANSWERED],              Unanswered[].to_a
+      assert_equal %w[UNDELETED],               Undeleted[].to_a
+      assert_equal %w[UNDRAFT],                 Undraft[].to_a
+      assert_equal %w[UNFLAGGED],               Unflagged[].to_a
+      assert_equal %w[UNSEEN],                  Unseen[].to_a
 
-      assert_equal %w[EMAILID  msg-123-abc],  EmailID["msg-123-abc"].to_a
-      assert_equal %w[THREADID thd-abc-123],  ThreadID["thd-abc-123"].to_a
+      assert_equal %w[KEYWORD   $Forwarded],    Keyword["$Forwarded"].to_a
+      assert_equal %w[UNKEYWORD $MDNSent],      Unkeyword["$MDNSent"].to_a
+
+      assert_equal %w[FILTER on-the-road],      Filter["on-the-road"].to_a
+
+      assert_equal %w[EMAILID  msg-123-abc],    EmailID["msg-123-abc"].to_a
+      assert_equal %w[THREADID thd-abc-123],    ThreadID["thd-abc-123"].to_a
+
+      assert_equal %w[FROM maria@example.test], From["maria@example.test"].to_a
+      assert_equal %w[TO   shugo@example.test], To["shugo@example.test"].to_a
+      assert_equal %w[BCC  Smith],              Bcc["Smith"].to_a
+      assert_equal %w[CC   Eric],               Cc["Eric"].to_a
+
+      assert_equal ["SUBJECT", "ruby news"],    Subject["ruby news"].to_a
+      assert_equal(["BODY", "substring found in msg body"],
+                   Body["substring found in msg body"].to_a)
+      assert_equal(["TEXT", "substring found in msg body"],
+                   Text["substring found in msg body"].to_a)
+
+      assert_equal(%w[HEADER List-ID ruby-lang.org],
+                   Header["List-ID", "ruby-lang.org"].to_a)
     end
   end
 
@@ -219,7 +242,7 @@ class SearchTests < Test::Unit::TestCase
       assert_equal input, keys_hash.compacted
       keys_hash.inputs => [:all, :flagged, :answered, :seen]
       keys_hash.keys => [
-        KeyTypes::All,
+        Search::KeyTypes::All,
         FlagKey["FLAGGED"],
         FlagKey["ANSWERED"],
         FlagKey["SEEN"]
