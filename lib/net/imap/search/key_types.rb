@@ -25,7 +25,10 @@ module Net
         end
 
         def self.nullary(name, &block)
-          NullaryKey.define_with_name(name:, &block)
+          NullaryKey.define do
+            extend KeyName[name]
+          end
+            .then { block ? Class.new(_1, &block) : _1 }
         end
 
         class UnaryKey < Key
@@ -34,7 +37,8 @@ module Net
 
         def self.unary_search_key(name, type, &block)
           attr = name.to_sym.downcase
-          UnaryKey.define_with_name(attr, name: name.to_s) do
+          UnaryKey.define(attr) do
+            extend KeyName[name]
             define_method :initialize do |**kwargs|
               kwargs[attr] &&= type[kwargs[attr]]
               super(**kwargs)
@@ -44,11 +48,15 @@ module Net
         end
 
         def self.n_ary_search_key(name, types, &block)
-          attrs = types.keys
-          types = types.compact
-          Key.define_with_name(*attrs, name: name.to_s) do
-            define_method :initialize do |**kwargs|
-              types.each do |attr, type|
+          types.freeze
+          Key.define(*types.keys) do
+            extend KeyName[name]
+
+            singleton_class.define_method(:member_types) { types }
+
+            def initialize(**kwargs)
+              self.class.member_types.each do |attr, type|
+                next unless type
                 kwargs[attr] &&= type[kwargs[attr]]
               end
               super(**kwargs)

@@ -6,7 +6,7 @@ module Net
 
       KeyName = ->(name) {
         key  = Types::SearchKeyName[name].to_sym.downcase
-        name = key.upcase.name unless name == key
+        name = key.upcase.name
         Module.new do
           singleton_class.define_method(:to_s) {
             "%s::KeyName[%p]" % [Search, name]
@@ -17,13 +17,6 @@ module Net
       }
 
       class Key < Data
-        def self.define_with_name(*attrs, name:, &block)
-          define(*attrs) do
-            extend KeyName[name]
-            class_exec(&block) if block
-          end
-        end
-
         def to_a = [name, *deconstruct]
         def to_h = {key => value}
         def name = self.class.name
