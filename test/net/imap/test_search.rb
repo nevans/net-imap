@@ -232,8 +232,88 @@ class SearchTests < Test::Unit::TestCase
       assert_equal(["X-GM-THRID", 1266894439832287888],
                    XGmThrID[1266894439832287888].to_a)
 
-      assert_equal(["FOO"], Generic["FOO"].to_a)
-      assert_equal(["FOO-BAR", "baz", 342], Generic["FOO-BAR", "baz", 342].to_a)
+      assert_equal(["abc"],               Generic["abc"].to_a)
+      assert_equal(["abc", 123],          Generic["abc", 123].to_a)
+      assert_equal(["a", "b", "c", 123],  Generic["a", "b", "c", 123].to_a)
+    end
+
+    test "#to_h" do
+      input = 1, 3..5, 33, -1
+      seqset = Net::IMAP::SequenceSet[input]
+      assert_equal({seq: seqset},               Seq[input].to_h)
+      assert_equal({uid: seqset},               UID[input].to_h)
+
+      assert_equal({all: true},                 All[].to_h)
+      assert_equal({savedatesupported: true},   SaveDateSupported[].to_h)
+
+      assert_equal({answered: true},            Answered[].to_h)
+      assert_equal({deleted: true},             Deleted[].to_h)
+      assert_equal({flagged: true},             Flagged[].to_h)
+      assert_equal({draft: true},               Draft[].to_h)
+      assert_equal({seen: true},                Seen[].to_h)
+      assert_equal({unanswered: true},          Unanswered[].to_h)
+      assert_equal({undeleted: true},           Undeleted[].to_h)
+      assert_equal({unflagged: true},           Unflagged[].to_h)
+      assert_equal({undraft: true},             Undraft[].to_h)
+      assert_equal({unseen: true},              Unseen[].to_h)
+
+      assert_equal({keyword:   "$forwarded"},    Keyword["$forwarded"].to_h)
+      assert_equal({unkeyword: "$mdnsent"},      Unkeyword["$mdnsent"].to_h)
+
+      assert_equal({filter:    "on-the-road"},   Filter["on-the-road"].to_h)
+
+      assert_equal({emailid: "msg-123-abc"},     EmailID["msg-123-abc"].to_h)
+      assert_equal({from: "maria@example.test"}, From["maria@example.test"].to_h)
+      assert_equal({to: "shugo@example.test"},   To["shugo@example.test"].to_h)
+      assert_equal({bcc: "Smith"},               Bcc["Smith"].to_h)
+      assert_equal({cc: "Eric"},                 Cc["Eric"].to_h)
+
+      assert_equal({subject: "ruby news"},    Subject["ruby news"].to_h)
+      assert_equal({body: "substring found in msg body"},
+                   Body["substring found in msg body"].to_h)
+      assert_equal({text: "substring found in msg body"},
+                   Text["substring found in msg body"].to_h)
+
+      date = Date.parse("2024-02-17")
+      assert_equal({before:      date}, Before[date].to_h)
+      assert_equal({on:          date}, On[date].to_h)
+      assert_equal({since:       date}, Since[date].to_h)
+
+      assert_equal({savedbefore: date}, SavedBefore[date].to_h)
+      assert_equal({savedon:     date}, SavedOn[date].to_h)
+      assert_equal({savedsince:  date}, SavedSince[date].to_h)
+
+      assert_equal({sentbefore:  date}, SentBefore[date].to_h)
+      assert_equal({senton:      date}, SentOn[date].to_h)
+      assert_equal({sentsince:   date}, SentSince[date].to_h)
+
+      assert_equal({larger:      123_456}, Larger[123_456].to_h)
+      assert_equal({smaller:     123_456}, Smaller[123_456].to_h)
+
+      assert_equal({older:       123_456}, Older[123_456].to_h)
+      assert_equal({younger:     123_456}, Younger[123_456].to_h)
+
+      assert_equal({header: {"List-ID" => "ruby-lang.org"}},
+                   Header["List-ID", "ruby-lang.org"].to_h)
+
+      assert_equal({modseq: 123_456_789}, ModSeq[123_456_789].to_h)
+      assert_equal({modseq: {"/flags/\\draft" => {"all" => 620_162_338}}},
+                   ModSeq["/flags/\\draft", "all", 620_162_338].to_h)
+
+      assert_equal({annotation: {"/comment" => {"value" => "IMAP4"}}},
+                   Annotation["/comment", "value", "IMAP4"].to_h)
+
+      assert_equal({x_gm_raw: "has:attachment in:unread"},
+                   XGmRaw["has:attachment in:unread"].to_h)
+      assert_equal({x_gm_msgid: 1278455344230334865},
+                   XGmMsgID[1278455344230334865].to_h)
+      assert_equal({x_gm_thrid: 1266894439832287888},
+                   XGmThrID[1266894439832287888].to_h)
+
+      assert_equal({"abc" => true}, Generic["abc"].to_h)
+      assert_equal({"abc" => 123},  Generic["abc", 123].to_h)
+      assert_equal({"a" => {"b" => {"c" => 123}}},
+                   Generic["a", "b", "c", 123].to_h)
     end
 
     test "date-based keys convert Time objects (#to_date)" do
