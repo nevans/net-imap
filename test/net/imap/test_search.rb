@@ -155,41 +155,7 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class KeyTypesTests < Test::Unit::TestCase
-    All               = Net::IMAP::Search::KeyTypes::All
-    SaveDateSupported = Net::IMAP::Search::KeyTypes::SaveDateSupported
-
-    Answered          = Net::IMAP::Search::KeyTypes::Answered
-    Deleted           = Net::IMAP::Search::KeyTypes::Deleted
-    Flagged           = Net::IMAP::Search::KeyTypes::Flagged
-    Draft             = Net::IMAP::Search::KeyTypes::Draft
-    Seen              = Net::IMAP::Search::KeyTypes::Seen
-
-    Unanswered        = Net::IMAP::Search::KeyTypes::Unanswered
-    Undeleted         = Net::IMAP::Search::KeyTypes::Undeleted
-    Unflagged         = Net::IMAP::Search::KeyTypes::Unflagged
-    Undraft           = Net::IMAP::Search::KeyTypes::Undraft
-    Unseen            = Net::IMAP::Search::KeyTypes::Unseen
-
-    Keyword           = Net::IMAP::Search::KeyTypes::Keyword
-    Unkeyword         = Net::IMAP::Search::KeyTypes::Unkeyword
-
-    Seq               = Net::IMAP::Search::KeyTypes::Seq
-    UID               = Net::IMAP::Search::KeyTypes::UID
-
-    Filter            = Net::IMAP::Search::KeyTypes::Filter
-
-    EmailID           = Net::IMAP::Search::KeyTypes::EmailID
-    ThreadID          = Net::IMAP::Search::KeyTypes::ThreadID
-
-    From              = Net::IMAP::Search::KeyTypes::From
-    To                = Net::IMAP::Search::KeyTypes::To
-    Cc                = Net::IMAP::Search::KeyTypes::Cc
-    Bcc               = Net::IMAP::Search::KeyTypes::Bcc
-    Subject           = Net::IMAP::Search::KeyTypes::Subject
-    Body              = Net::IMAP::Search::KeyTypes::Body
-    Text              = Net::IMAP::Search::KeyTypes::Text
-
-    Header            = Net::IMAP::Search::KeyTypes::Header
+    include Net::IMAP::Search::KeyTypes
 
     test "#to_a" do
       input = 1, 3..5, 33, -1
@@ -230,9 +196,57 @@ class SearchTests < Test::Unit::TestCase
       assert_equal(["TEXT", "substring found in msg body"],
                    Text["substring found in msg body"].to_a)
 
+      date = Date.parse("2024-02-17")
+      assert_equal ["BEFORE",      date], Before[date].to_a
+      assert_equal ["ON",          date], On[date].to_a
+      assert_equal ["SINCE",       date], Since[date].to_a
+
+      assert_equal ["SAVEDBEFORE", date], SavedBefore[date].to_a
+      assert_equal ["SAVEDON",     date], SavedOn[date].to_a
+      assert_equal ["SAVEDSINCE",  date], SavedSince[date].to_a
+
+      assert_equal ["SENTBEFORE",  date], SentBefore[date].to_a
+      assert_equal ["SENTON",      date], SentOn[date].to_a
+      assert_equal ["SENTSINCE",   date], SentSince[date].to_a
+
+      assert_equal ["LARGER",      123_456], Larger[123_456].to_a
+      assert_equal ["SMALLER",     123_456], Smaller[123_456].to_a
+
+      assert_equal ["OLDER",       123_456], Older[123_456].to_a
+      assert_equal ["YOUNGER",     123_456], Younger[123_456].to_a
+
       assert_equal(%w[HEADER List-ID ruby-lang.org],
                    Header["List-ID", "ruby-lang.org"].to_a)
+
+      assert_equal ["MODSEQ", 123_456_789], ModSeq[123_456_789].to_a
+      assert_equal(["MODSEQ", "/flags/\\draft", "all", 620_162_338],
+                   ModSeq["/flags/\\draft", "all", 620_162_338].to_a)
+
+      assert_equal(%w[ANNOTATION /comment value IMAP4],
+                   Annotation["/comment", "value", "IMAP4"].to_a)
+
+      assert_equal(["X-GM-RAW", "has:attachment in:unread"],
+                   XGmRaw["has:attachment in:unread"].to_a)
+      assert_equal(["X-GM-MSGID", 1278455344230334865],
+                   XGmMsgID[1278455344230334865].to_a)
+      assert_equal(["X-GM-THRID", 1266894439832287888],
+                   XGmThrID[1266894439832287888].to_a)
+
+      assert_equal(["FOO"], Generic["FOO"].to_a)
+      assert_equal(["FOO-BAR", "baz", 342], Generic["FOO-BAR", "baz", 342].to_a)
     end
+
+    test "date-based keys convert Time objects (#to_date)" do
+      date = Date.parse("2024-02-17")
+      time = Time.parse("2024-02-17T13:00:00")
+      assert_equal ["BEFORE", date], Before[time].to_a
+    end
+
+    test "date-based keys convert IMAP formatted date strings" do
+      date = Date.parse("2024-02-17")
+      assert_equal ["BEFORE", date], Before["17-Feb-2024"].to_a
+    end
+
   end
 
   class KeysHashTests < Test::Unit::TestCase
@@ -494,7 +508,7 @@ class SearchTests < Test::Unit::TestCase
         "SINCE", ^(Date.parse("2009-04-11"))
       ]
     end
-    test "value must be a valid filter-name" do
+    test "value must be a valid IMAP formatted date string" do
       assert_raise(Date::Error) do DateKey[:before, ""] end
       assert_raise(Date::Error) do DateKey[:before, "2222-10-10"] end
     end
