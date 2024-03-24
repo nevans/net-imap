@@ -156,7 +156,6 @@ module Net
                    entry_name:     Types::EntryName,
                    entry_type_req: Types::EntryTypeReq,
                    modseq:         Types::ModSequenceValzer) do
-
           def self.[](*args, **kwargs)
             (args in [modseq]) ? super(nil, nil, modseq, **kwargs) : super
           end
@@ -181,11 +180,11 @@ module Net
         search_key(:Generic,
                    name: Types::SearchKeyName,
                    args: method(:Array)) do
-
           def self.[](*args, **kwargs)
             (args in name, *rest) ? super(name, rest, **kwargs) : super
           end
 
+          def key = name
           def deconstruct = to_a
         end
 
