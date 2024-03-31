@@ -31,14 +31,20 @@ module Net
           def extract_keys(keys)
             keys.flat_map {|value|
               case value
-              when SequenceSet::Coercible then SeqSetKey[value]
-              when String, Symbol         then FlagKey[value]
+              when SequenceSet::Coercible then KeyTypes::Seq[value]
+              when String, Symbol         then nullary_key(value)
               when Array                  then AndKey[*value]
               when Hash                   then KeysHash.new(value).keys
               else raise DataFormatError, "invalid search-key: %p" % [value]
               end
             }
           end
+
+          def nullary_key(name)
+            KeysHash[name.downcase.to_sym => true].keys
+            # TODO: rescue unknown strings as KeyType::Generic?
+          end
+
         end
 
         class KeysHash
@@ -51,7 +57,7 @@ module Net
             @input = Hash.try_convert(input) or raise TypeError, "expected hash"
           end
 
-          def keys      = inputs.map         { input_to_key    _1, _2 }
+          def keys      = inputs.map         { input_to_key(*_1) }
           def inputs    = compacted.flat_map { entry_to_inputs _1, _2 }
           def compacted = input.compact # TODO
 
@@ -86,21 +92,62 @@ module Net
           # TODO: HEADER
           # TODO: MODSEQ
           # TODO: ANNOTATE
-          def input_to_key(key, value)
-            key in String | Symbol or
+          def input_to_key(key, *rest)
+            key in Symbol | Types::Formats::LABEL or
               raise TypeError, "expected string or symbol key"
             case key
-            when :seq                   then SeqSetKey[value]
-            when :and                   then AndKey.new(value)
-            when :all                   then KeyTypes::All[]
-            when UIDKey.match_name      then UIDKey[value]
-            when FlagKey.match_name     then FlagKey[key]
-            when DateKey.match_name     then DateKey[key, value]
-            when AstringKey.match_name  then AstringKey[key, value]
-            when /\AHEADER\Z/i          then HeaderKey[key, value]
-            when KeywordKey.match_name  then KeywordKey[key, value]
-            when ObjectIDKey.match_name then ObjectIDKey[key, value]
-            when FilterKey.match_name   then FilterKey[key, value]
+            when :all                   then KeyTypes::All[*rest]
+            when :savedatesupported     then KeyTypes::SaveDateSupported[*rest]
+            when :answered              then KeyTypes::Answered[*rest]
+            when :unanswered            then KeyTypes::Unanswered[*rest]
+            when :deleted               then KeyTypes::Deleted[*rest]
+            when :undeleted             then KeyTypes::Undeleted[*rest]
+            when :draft                 then KeyTypes::Draft[*rest]
+            when :undraft               then KeyTypes::Undraft[*rest]
+            when :flagged               then KeyTypes::Flagged[*rest]
+            when :unflagged             then KeyTypes::Unflagged[*rest]
+            when :seen                  then KeyTypes::Seen[*rest]
+            when :unseen                then KeyTypes::Unseen[*rest]
+            when :uid                   then KeyTypes::UID[*rest]
+            when :seq                   then KeyTypes::Seq[*rest]
+            when :keyword               then KeyTypes::Keyword[*rest]
+            when :unkeyword             then KeyTypes::Unkeyword[*rest]
+            when :filter                then KeyTypes::Filter[*rest]
+            when :emailid               then KeyTypes::EmailID[*rest]
+            when :threadid              then KeyTypes::ThreadID[*rest]
+            when :from                  then KeyTypes::From[*rest]
+            when :to                    then KeyTypes::To[*rest]
+            when :cc                    then KeyTypes::Cc[*rest]
+            when :bcc                   then KeyTypes::Bcc[*rest]
+            when :subject               then KeyTypes::Subject[*rest]
+            when :body                  then KeyTypes::Body[*rest]
+            when :text                  then KeyTypes::Text[*rest]
+            when :before                then KeyTypes::Before[*rest]
+            when :on                    then KeyTypes::On[*rest]
+            when :since                 then KeyTypes::Since[*rest]
+            when :sentbefore            then KeyTypes::SentBefore[*rest]
+            when :senton                then KeyTypes::SentOn[*rest]
+            when :sentsince             then KeyTypes::SentSince[*rest]
+            when :savedbefore           then KeyTypes::SavedBefore[*rest]
+            when :savedon               then KeyTypes::SavedOn[*rest]
+            when :savedsince            then KeyTypes::SavedSince[*rest]
+            when :larger                then KeyTypes::Larger[*rest]
+            when :smaller               then KeyTypes::Smaller[*rest]
+            when :older                 then KeyTypes::Older[*rest]
+            when :younger               then KeyTypes::Younger[*rest]
+            when :x_gm_raw              then KeyTypes::XGmRaw[*rest]
+            when :x_gm_msgid            then KeyTypes::XGmMsgID[*rest]
+            when :x_gm_thrid            then KeyTypes::XGmThrID[*rest]
+            when :header                then KeyTypes::Header[*rest]
+            when :modseq                then KeyTypes::ModSeq[*rest]
+            when :annotation            then KeyTypes::Annotation[*rest]
+
+            when :and                   then AndKey.new(*rest)
+            when :or                    then OrKey.new(*rest)
+            when :not                   then NotKey.new(*rest)
+            when :fuzzy                 then FuzzyKey.new(*rest)
+
+            when Types::Formats::LABEL  then KeyTypes::Generic[key, *rest]
             else
               raise DataFormatError, "unknown search-key: %p" % [key]
             end
