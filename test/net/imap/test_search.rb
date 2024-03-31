@@ -7,56 +7,48 @@ class SearchTests < Test::Unit::TestCase
   Search     = Net::IMAP::Search
 
   KeysHash    = Net::IMAP::Search::KeyList::KeysHash
+  KeyTypes    = Net::IMAP::Search::KeyTypes
 
+  # TODO: convert to new style (currently under KeyTypes)
   AndKey      = Net::IMAP::Search::AndKey
-  AstringKey  = Net::IMAP::Search::AstringKey
-  DateKey     = Net::IMAP::Search::DateKey
-  FilterKey   = Net::IMAP::Search::FilterKey
-  FlagKey     = Net::IMAP::Search::FlagKey
   KeyList     = Net::IMAP::Search::KeyList
-  KeywordKey  = Net::IMAP::Search::KeywordKey
-  Number64Key = Net::IMAP::Search::Number64Key
-  NzNumberKey = Net::IMAP::Search::NzNumberKey
-  ObjectIDKey = Net::IMAP::Search::ObjectIDKey
   OrKey       = Net::IMAP::Search::OrKey
-  SeqSetKey   = Net::IMAP::Search::SeqSetKey
-  UIDKey      = Net::IMAP::Search::UIDKey
 
   SequenceSet     = Net::IMAP::SequenceSet
   DataFormatError = Net::IMAP::DataFormatError
 
   test "#keys for sequence-set search keys" do
-    Search.new(1..).keys => KeyList[SeqSetKey(SequenceSet("1:*"))]
-    Search.new({seq: [1, -1]}).keys => KeyList[SeqSetKey(SequenceSet("1,*"))]
-    Search.new(seq: [1, -1]).keys => KeyList[SeqSetKey(SequenceSet("1,*"))]
+    Search.new(1..).keys => KeyList[KeyTypes::Seq(SequenceSet("1:*"))]
+    Search.new({seq: [1, -1]}).keys => KeyList[KeyTypes::Seq(SequenceSet("1,*"))]
+    Search.new(seq: [1, -1]).keys => KeyList[KeyTypes::Seq(SequenceSet("1,*"))]
   end
 
   test "#keys for nullary search keys, input as strings or symbols" do
-    Search.new("all").keys => KeyList[FlagKey["all"]]
-    Search.new(:Flagged).keys => KeyList[FlagKey["FLAGGED"]]
+    Search.new("all").keys => KeyList[KeyTypes::All[]]
+    Search.new(:Flagged).keys => KeyList[KeyTypes::Flagged]
   end
 
   test "#keys for various unary search keys" do
     Search.new({keyword: "$MDNSent", unkeyword: "foobar"}).keys => KeyList[
-      KeywordKey["KEYWORD", "$MDNSent"], KeywordKey["UNKEYWORD", "foobar"],
+      KeyTypes::Keyword["$MDNSent"], KeyTypes::Unkeyword["foobar"],
     ]
     Search.new({emailid: "foobar"}).keys => KeyList[
-      ObjectIDKey["EMAILID", "foobar"]
+      KeyTypes::EmailID["foobar"]
     ]
     Search.new({text: "отпуск"}).keys => KeyList[
-      AstringKey["TEXT", "отпуск"]
+      KeyTypes::Text["отпуск"]
     ]
     Search.new({filter: "on-the-road"}).keys => KeyList[
-      FilterKey["FILTER", "on-the-road"]
+      KeyTypes::Filter["on-the-road"]
     ]
     Search.new({on: "17-Feb-2024"}).keys => KeyList[
-      DateKey["ON", ^(Date.parse("2024-02-17"))]
+      KeyTypes::On[^(Date.parse("2024-02-17"))]
     ]
   end
 
   test "#keys for unary seqset-based search keys" do
     Search.new({uid: [4, -1, "123:456"]}).keys => KeyList[
-      UIDKey[SequenceSet["4,123:456,*"]]
+      KeyTypes::UID[SequenceSet["4,123:456,*"]]
     ]
   end
 
@@ -68,76 +60,80 @@ class SearchTests < Test::Unit::TestCase
 
   test "#keys for multiple nullary search keys, input as strings" do
     Search.new("ALL", "Flagged", "seen").keys => KeyList[
-      FlagKey["ALL"], FlagKey["Flagged"], FlagKey["seen"],
+      KeyTypes::All, KeyTypes::Flagged, KeyTypes::Seen,
     ]
   end
 
   test "hash nil value passes nothing" do
     Search.new({flagged: true, seq: nil, answered: nil, text: nil}).keys => [
-      FlagKey["FLAGGED"]
+      KeyTypes::Flagged
     ]
   end
 
   test "array args convert to parenthesized list (AndKey)" do
     Search.new(:flagged, [{seq: 123}, :seen], {subject: ""}).keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey
+      KeyTypes::Flagged,
+      AndKey[KeyTypes::Seq, KeyTypes::Seen],
+      KeyTypes::Subject
     ]
   end
 
   test "creating parenthesized list (AndKey)" do
     Search.new(:flagged, [{seq: 123}, :seen], {subject: ""}).keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey
+      KeyTypes::Flagged, AndKey[KeyTypes::Seq, KeyTypes::Seen],
+      KeyTypes::Subject
     ]
     Search.new(flagged: true, and: [{seq: 123}, :seen], subject: "").keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey], AstringKey
+      KeyTypes::Flagged, AndKey[KeyTypes::Seq, KeyTypes::Seen],
+      KeyTypes::Subject
     ]
     Search.new(flagged: true, and: {seq: 123, seen: true}).keys => [
-      FlagKey, AndKey[SeqSetKey, FlagKey]
+      KeyTypes::Flagged, AndKey[KeyTypes::Seq, KeyTypes::Seen]
     ]
   end
 
   class KeyListTests < Test::Unit::TestCase
     test "for sequence-set search keys" do
-      KeyList[1..].keys     => [SeqSetKey(SequenceSet("1:*"))]
-      KeyList[Set[5, 6, 7]] => KeyList[SeqSetKey(SequenceSet("5:7"))]
-      KeyList[seq: [1, -1]] => KeyList[SeqSetKey(SequenceSet("1,*"))]
+      KeyList[1..].keys     => [KeyTypes::Seq(SequenceSet("1:*"))]
+      KeyList[Set[5, 6, 7]] => KeyList[KeyTypes::Seq(SequenceSet("5:7"))]
+      KeyList[seq: [1, -1]] => KeyList[KeyTypes::Seq(SequenceSet("1,*"))]
     end
 
     test "for nullary search keys, input as strings or symbols" do
-      KeyList["all"].keys => [FlagKey["all"]]
-      KeyList["FLAGGED"]  => KeyList[FlagKey["FLAGGED"]]
-      KeyList["Seen"]     => KeyList[FlagKey["Seen"]]
-      KeyList[:Answered]  => KeyList[FlagKey["ANSWERED"]]
+      KeyList["all"].keys => [KeyTypes::All]
+      KeyList["FLAGGED"]  => KeyList[KeyTypes::Flagged]
+      KeyList["Seen"]     => KeyList[KeyTypes::Seen]
+      KeyList[:Answered]  => KeyList[KeyTypes::Answered]
     end
 
     test "hash entries with true value passes only the key" do
       KeyList[{flagged: true, answered: true, seen: true}] => KeyList[
-        FlagKey["FLAGGED"], FlagKey["ANSWERED"], FlagKey["SEEN"]
+        KeyTypes::Flagged, KeyTypes::Answered, KeyTypes::Seen
       ]
     end
 
     test "hash entries with false value passes only the UN-key" do
       KeyList[{flagged: false, answered: false, seen: false}] => KeyList[
-        FlagKey["UNFLAGGED"], FlagKey["UNANSWERED"], FlagKey["UNSEEN"],
+        KeyTypes::Unflagged, KeyTypes::Unanswered, KeyTypes::Unseen,
       ]
     end
 
     test "hash nil value passes nothing" do
       KeyList[{flagged: true, seq: nil, answered: nil, text: nil}] => [
-        FlagKey["FLAGGED"],
+        KeyTypes::Flagged,
       ]
     end
 
     test "hash entries for unary search keys" do
-      KeyList[{text: "отпуск"}] => KeyList[AstringKey["TEXT", "отпуск"]]
+      KeyList[{text: "отпуск"}] => KeyList[KeyTypes::Text["отпуск"]]
       KeyList[{on: "17-Feb-2024"}] => KeyList[
-        DateKey["ON", ^(Date.parse("2024-02-17"))]
+        KeyTypes::On[^(Date.parse("2024-02-17"))]
       ]
     end
 
     test "for multiple search keys, input as strings" do
       KeyList["ALL", "56:78,*", "seen"] => KeyList[
-        FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"],
+        KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen,
       ]
     end
 
@@ -336,10 +332,10 @@ class SearchTests < Test::Unit::TestCase
       assert_equal input, keys_hash.compacted
       keys_hash.inputs => [:all, :flagged, :answered, :seen]
       keys_hash.keys => [
-        Search::KeyTypes::All,
-        FlagKey["FLAGGED"],
-        FlagKey["ANSWERED"],
-        FlagKey["SEEN"]
+        KeyTypes::All,
+        KeyTypes::Flagged,
+        KeyTypes::Answered,
+        KeyTypes::Seen,
       ]
     end
 
@@ -349,7 +345,7 @@ class SearchTests < Test::Unit::TestCase
       keys_hash.compacted => ^input
       keys_hash.inputs => [:unflagged, :unanswered, :unseen]
       keys_hash.keys => [
-        FlagKey["UNFLAGGED"], FlagKey["UNANSWERED"], FlagKey["UNSEEN"]
+        KeyTypes::Unflagged, KeyTypes::Unanswered, KeyTypes::Unseen
       ]
     end
 
@@ -358,7 +354,7 @@ class SearchTests < Test::Unit::TestCase
       keys_hash = KeysHash[input]
       keys_hash.compacted => {flagged: true, **nil}
       keys_hash.inputs    => [:flagged]
-      keys_hash.keys      => [FlagKey["FLAGGED"]]
+      keys_hash.keys      => [KeyTypes::Flagged]
     end
 
     test "hash entries for unary search keys" do
@@ -366,13 +362,13 @@ class SearchTests < Test::Unit::TestCase
       keys_hash = KeysHash[input]
       keys_hash.compacted => ^input
       keys_hash.inputs    => [[:text, "отпуск"]]
-      keys_hash.keys => [AstringKey["TEXT", "отпуск"]]
+      keys_hash.keys => [KeyTypes::Text["отпуск"]]
 
       input = {on: "17-Feb-2024"}
       keys_hash = KeysHash[input]
       keys_hash.compacted => ^input
       keys_hash.inputs => [[:on, "17-Feb-2024"]]
-      keys_hash.keys => [DateKey["ON", ^(Date.parse("2024-02-17"))]]
+      keys_hash.keys => [KeyTypes::On[^(Date.parse("2024-02-17"))]]
     end
 
     test "hash entries for simple nested search hashes" do
@@ -389,7 +385,7 @@ class SearchTests < Test::Unit::TestCase
   class AndKeyTests < Test::Unit::TestCase
     test "#keys for one or more search keys" do
       AndKey["ALL", "56:78,*", "seen"] => AndKey[
-        FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"],
+        KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen,
       ]
     end
 
@@ -405,18 +401,18 @@ class SearchTests < Test::Unit::TestCase
   class OrKeyTests < Test::Unit::TestCase
     test "#keys for one or more search keys" do
       OrKey["56:78,*", "seen", {subject: "foo"}] => OrKey[
-        SeqSetKey[SequenceSet["56:78,*"]],
-        FlagKey["seen"],
-        AstringKey["SUBJECT", "foo"]
+        KeyTypes::Seq[SequenceSet["56:78,*"]],
+        KeyTypes::Seen,
+        KeyTypes::Subject["foo"]
       ]
     end
 
     # test "array elements are not flattened or combined" do
     #   OrKey[123, 555] => OrKey[
-    #     SeqSetKey[SequenceSet["123"]], SeqSetKey[SequenceSet["555"]]
+    #     KeyTypes::Seq[SequenceSet["123"]], KeyTypes::Seq[SequenceSet["555"]]
     #   ]
     #   OrKey["ALL", "56:78,*", "seen"] => OrKey[
-    #     FlagKey["ALL"], SeqSetKey[SequenceSet["56:78,*"]], FlagKey["seen"]
+    #     KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen
     #   ]
     # end
 
@@ -430,6 +426,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class SeqSetKeyTests < Test::Unit::TestCase
+    SeqSetKey = Net::IMAP::Search::SeqSetKey
+
     test "#seqset" do
       assert_equal SequenceSet["123:456,55,9"], SeqSetKey["123:456,55,9"].seqset
       assert_equal SequenceSet["123456"],       SeqSetKey[123_456].seqset
@@ -454,6 +452,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class UIDKeyTests < Test::Unit::TestCase
+    UIDKey = Net::IMAP::Search::UIDKey
+
     test "#seqset" do
       assert_equal SequenceSet["123:456,55,9"], UIDKey["123:456,55,9"].seqset
       assert_equal SequenceSet["123456"],       UIDKey[123_456].seqset
@@ -478,6 +478,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class FlagKeyTests < Test::Unit::TestCase
+    FlagKey = Net::IMAP::Search::FlagKey
+
     test "#name string is case-preserved" do
       assert_equal "ALL", FlagKey["ALL"].name
       FlagKey["seen"]   => FlagKey["seen"]
@@ -519,6 +521,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class KeywordKeyTests < Test::Unit::TestCase
+    KeywordKey = Net::IMAP::Search::KeywordKey
+
     test "#value string" do
       KeywordKey[:keyword, "$MDNSent"] => KeywordKey["KEYWORD", "$MDNSent"]
       KeywordKey[:unkeyword, "foobar"] => KeywordKey["UNKEYWORD", "foobar"]
@@ -533,6 +537,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class ObjectIDKeyTests < Test::Unit::TestCase
+    ObjectIDKey = Net::IMAP::Search::ObjectIDKey
+
     test "#value string" do
       ObjectIDKey[:emailid,  "1234-5678"] => ObjectIDKey["EMAILID",  "1234-5678"]
       ObjectIDKey[:threadid, "1234-5678"] => ObjectIDKey["THREADID", "1234-5678"]
@@ -544,6 +550,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class FilterKeyTests < Test::Unit::TestCase
+    FilterKey   = Net::IMAP::Search::FilterKey
+
     test "#value string" do
       FilterKey[:filter,  "filter-name"] => FilterKey["FILTER",  "filter-name"]
     end
@@ -554,6 +562,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class AstringKeyTests < Test::Unit::TestCase
+    AstringKey = Net::IMAP::Search::AstringKey
+
     test "#name string is case-preserved" do
       assert_equal "Text", AstringKey["Text", ""].name
       assert_equal "bODy", AstringKey["bODy", ""].name
@@ -580,6 +590,8 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class DateKeyTests < Test::Unit::TestCase
+    DateKey = Net::IMAP::Search::DateKey
+
     test "#value data" do
       DateKey[:since, "1-Feb-1994"] => DateKey[
         "SINCE", ^(Date.parse("1994-02-01"))
@@ -605,6 +617,9 @@ class SearchTests < Test::Unit::TestCase
   end
 
   class NumberKeyTests < Test::Unit::TestCase
+    Number64Key = Net::IMAP::Search::Number64Key
+    NzNumberKey = Net::IMAP::Search::NzNumberKey
+
     test "#value data" do
       Number64Key[:smaller,  1337] => Number64Key["SMALLER", 1337]
       Number64Key[:larger, "1994"] => Number64Key["LARGER",  1994]
