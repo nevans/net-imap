@@ -11,6 +11,7 @@ class SearchKeyTypesTests < Test::Unit::TestCase
   include Search::KeyTypes
 
   # TODO: Add :and, OR, NOT, FUZZY
+  # TODO: Add :any?, :all?
 
   test "date-based keys convert Time objects (#to_date)" do
     date = Date.parse("2024-02-17")
@@ -305,19 +306,22 @@ class SearchKeyTypesTests < Test::Unit::TestCase
   }, keep: true
 
   data "Generic (no args)", {
-    type: Generic, input: ["abc"], args: [],
+    type: Generic, input: ["abc"],
+    args: [],
     to_a: ["abc"],
     to_h: {"abc" => true},
   }, keep: true
 
   data "Generic (single arg)", {
-    type: Generic, input: ["abc", 123], args: [123],
+    type: Generic, input: ["abc", 123],
+    args: [123],
     to_a: ["abc", 123],
     to_h: {"abc" => 123},
   }, keep: true
 
   data "Generic (multiple args)", {
-    type: Generic, input: ["a", "b", "c", 123], args: ["b", "c", 123],
+    type: Generic, input: ["a", "b", "c", 123],
+    args: ["b", "c", 123],
     to_a: ["a", "b", "c", 123],
     to_h: {"a" => {"b" => {"c" => 123}}},
   }, keep: true
