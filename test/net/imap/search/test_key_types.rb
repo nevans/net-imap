@@ -306,10 +306,10 @@ class SearchKeyTypesTests < Test::Unit::TestCase
   }, keep: true
 
   data "Generic (no args)", {
-    type: Generic, input: ["abc"],
+    type: Generic, input: ["Abc"],
     args: [],
-    to_a: ["abc"],
-    to_h: {"abc" => true},
+    to_a: ["Abc"],
+    to_h: {"Abc" => true},
   }, keep: true
 
   data "Generic (single arg)", {
@@ -343,6 +343,69 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     assert_equal type, search_key.class
     assert_equal args, search_key.args
     assert_equal hash, search_key.to_h
+  end
+
+  class SeqTests < Test::Unit::TestCase
+    include Search::KeyTypes
+
+    test "#seq" do
+      assert_equal SequenceSet["123:456,55,9"], Seq["123:456,55,9"].seq
+      assert_equal SequenceSet["123456"],       Seq[123_456].seq
+      Seq[123_456]    => Seq[seq: SequenceSet["123456"]]
+      Seq[[1..3, 45]] => Seq[SequenceSet["1:3,45"]]
+      Seq[:*]         => Seq[SequenceSet["*"]]
+      Seq[?*]         => Seq[SequenceSet["*"]]
+      Seq[-1]         => Seq[SequenceSet["*"]]
+      Seq[987..]      => Seq[SequenceSet["987:*"]]
+    end
+
+    test "#seq must be valid" do
+      assert_raise ArgumentError   do Seq[] end
+      assert_raise ArgumentError   do Seq[1, 2, 3] end
+      assert_raise DataFormatError do Seq[0] end
+      assert_raise DataFormatError do Seq[nil] end
+      assert_raise DataFormatError do Seq[[]] end
+      assert_raise DataFormatError do Seq[2**32] end
+      assert_raise DataFormatError do Seq[-2] end
+      assert_raise DataFormatError do Seq["invalid"] end
+    end
+  end
+
+  class UIDTests < Test::Unit::TestCase
+    include Search::KeyTypes
+
+    test "#uid" do
+      assert_equal SequenceSet["123:456,55,9"], UID["123:456,55,9"].uid
+      assert_equal SequenceSet["123456"],       UID[123_456].uid
+      UID[123_456]    => UID[uid: SequenceSet["123456"]]
+      UID[[1..3, 45]] => UID[SequenceSet["1:3,45"]]
+      UID[:*]         => UID[SequenceSet["*"]]
+      UID[?*]         => UID[SequenceSet["*"]]
+      UID[-1]         => UID[SequenceSet["*"]]
+      UID[987..]      => UID[SequenceSet["987:*"]]
+    end
+
+    test "#uid must be valid" do
+      assert_raise ArgumentError   do UID[] end
+      assert_raise ArgumentError   do UID[1, 2, 3] end
+      assert_raise DataFormatError do UID[0] end
+      assert_raise DataFormatError do UID[nil] end
+      assert_raise DataFormatError do UID[[]] end
+      assert_raise DataFormatError do UID[2**32] end
+      assert_raise DataFormatError do UID[-2] end
+      assert_raise DataFormatError do UID["invalid"] end
+    end
+  end
+
+  class KeywordTests < Test::Unit::TestCase
+    include Search::KeyTypes
+
+    test "keyword must be a valid flag-keyword" do
+      assert_raise(DataFormatError) do Keyword[""] end
+      assert_raise(DataFormatError) do Keyword["no spaces"] end
+      assert_raise(DataFormatError) do Keyword["(no-parens)"] end
+      assert_raise(DataFormatError) do Keyword["[no-rbra]"] end
+    end
   end
 
 end

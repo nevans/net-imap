@@ -25,7 +25,6 @@ module Net
 
       AndKey        = Class.new(KeyListKey)
       OrKey         = Class.new(KeyListKey)
-      SeqSetKey     = Key.define(:seqset)
       UnaryKey      = Key.define(:name, :value)
 
       FlagKey       = Key.define(:name)
@@ -44,14 +43,6 @@ module Net
         known_name "SAVEDATESUPPORTED" # SAVEDATE [RFC8514]
       end
 
-      class SeqSetKey
-        def initialize(seqset:) = super seqset: SequenceSet[seqset]
-      end
-
-      class UIDKey < SeqSetKey
-        def self.match_name = /UID/i
-      end
-
       class UnaryKey
         include KeyNameValidation
         def initialize(name:, value:)
@@ -63,11 +54,6 @@ module Net
         def coerce_value(value)
           String.try_convert(value) or raise TypeError, "expected String"
         end
-      end
-
-      class KeywordKey < StringKey
-        known_names %w[KEYWORD UNKEYWORD]
-        def coerce_value(value) = Types::FlagKeyword[value]
       end
 
       class AstringKey < StringKey

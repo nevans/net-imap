@@ -266,14 +266,11 @@ module Net
       autoload :KeyNameValidation, "#{__dir__}/search/key_name_validation"
       autoload :KeyTypes,          "#{__dir__}/search/key_types"
 
-      # autoload :UIDKey,   "#{__dir__}/search/keys"
       autoload :AndKey,       "#{__dir__}/search/keys"
       autoload :AstringKey,   "#{__dir__}/search/keys"
       autoload :FilterKey,    "#{__dir__}/search/keys"
       autoload :FlagKey,      "#{__dir__}/search/keys"
-      autoload :KeywordKey,   "#{__dir__}/search/keys"
       autoload :HeaderKey,    "#{__dir__}/search/keys"
-      autoload :SeqSetKey,    "#{__dir__}/search/keys"
       autoload :StringKey,    "#{__dir__}/search/keys"
       autoload :UnaryKey,     "#{__dir__}/search/keys"
 
