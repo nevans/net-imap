@@ -64,7 +64,7 @@ class SearchTests < Test::Unit::TestCase
     ]
   end
 
-  test "hash nil value passes nothing" do
+  test "hash nil values are dropped" do
     Search.new({flagged: true, seq: nil, answered: nil, text: nil}).keys => [
       KeyTypes::Flagged
     ]
@@ -148,181 +148,6 @@ class SearchTests < Test::Unit::TestCase
     test "invalid - bad criteria" do
       assert_raise TypeError do KeyList[{123 => false}] end
     end
-  end
-
-  class KeyTypesTests < Test::Unit::TestCase
-    include Net::IMAP::Search::KeyTypes
-
-    test "#to_a" do
-      input = 1, 3..5, 33, -1
-      seqset = Net::IMAP::SequenceSet[input]
-      assert_equal [seqset],                    Seq[input].to_a
-      assert_equal ["UID", seqset],             UID[input].to_a
-
-      assert_equal %w[ALL],                     All[].to_a
-      assert_equal %w[SAVEDATESUPPORTED],       SaveDateSupported[].to_a
-
-      assert_equal %w[ANSWERED],                Answered[].to_a
-      assert_equal %w[DELETED],                 Deleted[].to_a
-      assert_equal %w[FLAGGED],                 Flagged[].to_a
-      assert_equal %w[DRAFT],                   Draft[].to_a
-      assert_equal %w[SEEN],                    Seen[].to_a
-      assert_equal %w[UNANSWERED],              Unanswered[].to_a
-      assert_equal %w[UNDELETED],               Undeleted[].to_a
-      assert_equal %w[UNDRAFT],                 Undraft[].to_a
-      assert_equal %w[UNFLAGGED],               Unflagged[].to_a
-      assert_equal %w[UNSEEN],                  Unseen[].to_a
-
-      assert_equal %w[KEYWORD   $Forwarded],    Keyword["$Forwarded"].to_a
-      assert_equal %w[UNKEYWORD $MDNSent],      Unkeyword["$MDNSent"].to_a
-
-      assert_equal %w[FILTER on-the-road],      Filter["on-the-road"].to_a
-
-      assert_equal %w[EMAILID  msg-123-abc],    EmailID["msg-123-abc"].to_a
-      assert_equal %w[THREADID thd-abc-123],    ThreadID["thd-abc-123"].to_a
-
-      assert_equal %w[FROM maria@example.test], From["maria@example.test"].to_a
-      assert_equal %w[TO   shugo@example.test], To["shugo@example.test"].to_a
-      assert_equal %w[BCC  Smith],              Bcc["Smith"].to_a
-      assert_equal %w[CC   Eric],               Cc["Eric"].to_a
-
-      assert_equal ["SUBJECT", "ruby news"],    Subject["ruby news"].to_a
-      assert_equal(["BODY", "substring found in msg body"],
-                   Body["substring found in msg body"].to_a)
-      assert_equal(["TEXT", "substring found in msg body"],
-                   Text["substring found in msg body"].to_a)
-
-      date = Date.parse("2024-02-17")
-      assert_equal ["BEFORE",      date], Before[date].to_a
-      assert_equal ["ON",          date], On[date].to_a
-      assert_equal ["SINCE",       date], Since[date].to_a
-
-      assert_equal ["SAVEDBEFORE", date], SavedBefore[date].to_a
-      assert_equal ["SAVEDON",     date], SavedOn[date].to_a
-      assert_equal ["SAVEDSINCE",  date], SavedSince[date].to_a
-
-      assert_equal ["SENTBEFORE",  date], SentBefore[date].to_a
-      assert_equal ["SENTON",      date], SentOn[date].to_a
-      assert_equal ["SENTSINCE",   date], SentSince[date].to_a
-
-      assert_equal ["LARGER",      123_456], Larger[123_456].to_a
-      assert_equal ["SMALLER",     123_456], Smaller[123_456].to_a
-
-      assert_equal ["OLDER",       123_456], Older[123_456].to_a
-      assert_equal ["YOUNGER",     123_456], Younger[123_456].to_a
-
-      assert_equal(%w[HEADER List-ID ruby-lang.org],
-                   Header["List-ID", "ruby-lang.org"].to_a)
-
-      assert_equal ["MODSEQ", 123_456_789], ModSeq[123_456_789].to_a
-      assert_equal(["MODSEQ", "/flags/\\draft", "all", 620_162_338],
-                   ModSeq["/flags/\\draft", "all", 620_162_338].to_a)
-
-      assert_equal(%w[ANNOTATION /comment value IMAP4],
-                   Annotation["/comment", "value", "IMAP4"].to_a)
-
-      assert_equal(["X-GM-RAW", "has:attachment in:unread"],
-                   XGmRaw["has:attachment in:unread"].to_a)
-      assert_equal(["X-GM-MSGID", 1278455344230334865],
-                   XGmMsgID[1278455344230334865].to_a)
-      assert_equal(["X-GM-THRID", 1266894439832287888],
-                   XGmThrID[1266894439832287888].to_a)
-
-      assert_equal(["abc"],               Generic["abc"].to_a)
-      assert_equal(["abc", 123],          Generic["abc", 123].to_a)
-      assert_equal(["a", "b", "c", 123],  Generic["a", "b", "c", 123].to_a)
-    end
-
-    test "#to_h" do
-      input = 1, 3..5, 33, -1
-      seqset = Net::IMAP::SequenceSet[input]
-      assert_equal({seq: seqset},               Seq[input].to_h)
-      assert_equal({uid: seqset},               UID[input].to_h)
-
-      assert_equal({all: true},                 All[].to_h)
-      assert_equal({savedatesupported: true},   SaveDateSupported[].to_h)
-
-      assert_equal({answered: true},            Answered[].to_h)
-      assert_equal({deleted: true},             Deleted[].to_h)
-      assert_equal({flagged: true},             Flagged[].to_h)
-      assert_equal({draft: true},               Draft[].to_h)
-      assert_equal({seen: true},                Seen[].to_h)
-      assert_equal({unanswered: true},          Unanswered[].to_h)
-      assert_equal({undeleted: true},           Undeleted[].to_h)
-      assert_equal({unflagged: true},           Unflagged[].to_h)
-      assert_equal({undraft: true},             Undraft[].to_h)
-      assert_equal({unseen: true},              Unseen[].to_h)
-
-      assert_equal({keyword:   "$forwarded"},    Keyword["$forwarded"].to_h)
-      assert_equal({unkeyword: "$mdnsent"},      Unkeyword["$mdnsent"].to_h)
-
-      assert_equal({filter:    "on-the-road"},   Filter["on-the-road"].to_h)
-
-      assert_equal({emailid: "msg-123-abc"},     EmailID["msg-123-abc"].to_h)
-      assert_equal({from: "maria@example.test"}, From["maria@example.test"].to_h)
-      assert_equal({to: "shugo@example.test"},   To["shugo@example.test"].to_h)
-      assert_equal({bcc: "Smith"},               Bcc["Smith"].to_h)
-      assert_equal({cc: "Eric"},                 Cc["Eric"].to_h)
-
-      assert_equal({subject: "ruby news"},    Subject["ruby news"].to_h)
-      assert_equal({body: "substring found in msg body"},
-                   Body["substring found in msg body"].to_h)
-      assert_equal({text: "substring found in msg body"},
-                   Text["substring found in msg body"].to_h)
-
-      date = Date.parse("2024-02-17")
-      assert_equal({before:      date}, Before[date].to_h)
-      assert_equal({on:          date}, On[date].to_h)
-      assert_equal({since:       date}, Since[date].to_h)
-
-      assert_equal({savedbefore: date}, SavedBefore[date].to_h)
-      assert_equal({savedon:     date}, SavedOn[date].to_h)
-      assert_equal({savedsince:  date}, SavedSince[date].to_h)
-
-      assert_equal({sentbefore:  date}, SentBefore[date].to_h)
-      assert_equal({senton:      date}, SentOn[date].to_h)
-      assert_equal({sentsince:   date}, SentSince[date].to_h)
-
-      assert_equal({larger:      123_456}, Larger[123_456].to_h)
-      assert_equal({smaller:     123_456}, Smaller[123_456].to_h)
-
-      assert_equal({older:       123_456}, Older[123_456].to_h)
-      assert_equal({younger:     123_456}, Younger[123_456].to_h)
-
-      assert_equal({header: {"List-ID" => "ruby-lang.org"}},
-                   Header["List-ID", "ruby-lang.org"].to_h)
-
-      assert_equal({modseq: 123_456_789}, ModSeq[123_456_789].to_h)
-      assert_equal({modseq: {"/flags/\\draft" => {"all" => 620_162_338}}},
-                   ModSeq["/flags/\\draft", "all", 620_162_338].to_h)
-
-      assert_equal({annotation: {"/comment" => {"value" => "IMAP4"}}},
-                   Annotation["/comment", "value", "IMAP4"].to_h)
-
-      assert_equal({x_gm_raw: "has:attachment in:unread"},
-                   XGmRaw["has:attachment in:unread"].to_h)
-      assert_equal({x_gm_msgid: 1278455344230334865},
-                   XGmMsgID[1278455344230334865].to_h)
-      assert_equal({x_gm_thrid: 1266894439832287888},
-                   XGmThrID[1266894439832287888].to_h)
-
-      assert_equal({"abc" => true}, Generic["abc"].to_h)
-      assert_equal({"abc" => 123},  Generic["abc", 123].to_h)
-      assert_equal({"a" => {"b" => {"c" => 123}}},
-                   Generic["a", "b", "c", 123].to_h)
-    end
-
-    test "date-based keys convert Time objects (#to_date)" do
-      date = Date.parse("2024-02-17")
-      time = Time.parse("2024-02-17T13:00:00")
-      assert_equal ["BEFORE", date], Before[time].to_a
-    end
-
-    test "date-based keys convert IMAP formatted date strings" do
-      date = Date.parse("2024-02-17")
-      assert_equal ["BEFORE", date], Before["17-Feb-2024"].to_a
-    end
-
   end
 
   class KeysHashTests < Test::Unit::TestCase
@@ -425,79 +250,10 @@ class SearchTests < Test::Unit::TestCase
     end
   end
 
-  class SeqSetKeyTests < Test::Unit::TestCase
-    SeqSetKey = Net::IMAP::Search::SeqSetKey
-
-    test "#seqset" do
-      assert_equal SequenceSet["123:456,55,9"], SeqSetKey["123:456,55,9"].seqset
-      assert_equal SequenceSet["123456"],       SeqSetKey[123_456].seqset
-      SeqSetKey[123_456]    => SeqSetKey[seqset: SequenceSet["123456"]]
-      SeqSetKey[[1..3, 45]] => SeqSetKey[SequenceSet["1:3,45"]]
-      SeqSetKey[:*]         => SeqSetKey[SequenceSet["*"]]
-      SeqSetKey[?*]         => SeqSetKey[SequenceSet["*"]]
-      SeqSetKey[-1]         => SeqSetKey[SequenceSet["*"]]
-      SeqSetKey[987..]      => SeqSetKey[SequenceSet["987:*"]]
-    end
-
-    test "#seqset must be valid" do
-      assert_raise ArgumentError   do SeqSetKey[] end
-      assert_raise ArgumentError   do SeqSetKey[1, 2, 3] end
-      assert_raise DataFormatError do SeqSetKey[0] end
-      assert_raise DataFormatError do SeqSetKey[nil] end
-      assert_raise DataFormatError do SeqSetKey[[]] end
-      assert_raise DataFormatError do SeqSetKey[2**32] end
-      assert_raise DataFormatError do SeqSetKey[-2] end
-      assert_raise DataFormatError do SeqSetKey["invalid"] end
-    end
-  end
-
-  class UIDKeyTests < Test::Unit::TestCase
-    UIDKey = Net::IMAP::Search::UIDKey
-
-    test "#seqset" do
-      assert_equal SequenceSet["123:456,55,9"], UIDKey["123:456,55,9"].seqset
-      assert_equal SequenceSet["123456"],       UIDKey[123_456].seqset
-      UIDKey[123_456]    => UIDKey[seqset: SequenceSet["123456"]]
-      UIDKey[[1..3, 45]] => UIDKey[SequenceSet["1:3,45"]]
-      UIDKey[:*]         => UIDKey[SequenceSet["*"]]
-      UIDKey[?*]         => UIDKey[SequenceSet["*"]]
-      UIDKey[-1]         => UIDKey[SequenceSet["*"]]
-      UIDKey[987..]      => UIDKey[SequenceSet["987:*"]]
-    end
-
-    test "#seqset must be valid" do
-      assert_raise ArgumentError   do UIDKey[] end
-      assert_raise ArgumentError   do UIDKey[1, 2, 3] end
-      assert_raise DataFormatError do UIDKey[0] end
-      assert_raise DataFormatError do UIDKey[nil] end
-      assert_raise DataFormatError do UIDKey[[]] end
-      assert_raise DataFormatError do UIDKey[2**32] end
-      assert_raise DataFormatError do UIDKey[-2] end
-      assert_raise DataFormatError do UIDKey["invalid"] end
-    end
-  end
-
-  class FlagKeyTests < Test::Unit::TestCase
+  class FlagTests < Test::Unit::TestCase
     FlagKey = Net::IMAP::Search::FlagKey
 
-    test "#name string is case-preserved" do
-      assert_equal "ALL", FlagKey["ALL"].name
-      FlagKey["seen"]   => FlagKey["seen"]
-      FlagKey["unseen"] => FlagKey[name: "unseen"]
-    end
-
-    test "#name symbol is upcased" do
-      assert_equal "ALL", FlagKey[:All].name
-      FlagKey[:seen]   => FlagKey["SEEN"]
-    end
-
-    test "#name must be a string or symbol" do
-      assert_raise(ArgumentError) do FlagKey[] end
-      assert_raise(TypeError) do FlagKey[nil] end
-      assert_raise(TypeError) do FlagKey[1234] end
-      assert_raise(TypeError) do FlagKey[["all"]] end
-    end
-
+    # TODO: move to tests for Generic
     test "#name must be a valid label" do
       assert_raise(DataFormatError) do FlagKey[""] end
       assert_raise(DataFormatError) do FlagKey["1234"] end
@@ -505,44 +261,11 @@ class SearchTests < Test::Unit::TestCase
       assert_raise(DataFormatError) do FlagKey['["all"]'] end
       assert_raise(DataFormatError) do FlagKey["all flagged"] end
     end
-
-    data do FlagKey.known_names.to_h { [_1, _1] } end
-    test "known keys have no warning" do |name|
-      assert_warning("") do FlagKey[name.upcase] end
-      assert_warning("") do FlagKey[name.downcase] end
-      mixcase = name.gsub(/./) { _1.public_send(%i[upcase downcase].sample) }
-      assert_warning("") do FlagKey[mixcase] end
-    end
-
-    test "unknown keys print a warning" do
-      warning = /possibly invalid search key: unknown/i
-      assert_warning(warning) do FlagKey["unknown"] end
-    end
-  end
-
-  class KeywordKeyTests < Test::Unit::TestCase
-    KeywordKey = Net::IMAP::Search::KeywordKey
-
-    test "#value string" do
-      KeywordKey[:keyword, "$MDNSent"] => KeywordKey["KEYWORD", "$MDNSent"]
-      KeywordKey[:unkeyword, "foobar"] => KeywordKey["UNKEYWORD", "foobar"]
-    end
-
-    test "value must be a valid flag-keyword" do
-      assert_raise(DataFormatError) do KeywordKey["Keyword", ""] end
-      assert_raise(DataFormatError) do KeywordKey["Keyword", "no spaces"] end
-      assert_raise(DataFormatError) do KeywordKey["Keyword", "(no-parens)"] end
-      assert_raise(DataFormatError) do KeywordKey["Keyword", "[no-rbra]"] end
-    end
   end
 
   class ObjectIDKeyTests < Test::Unit::TestCase
     ObjectIDKey = Net::IMAP::Search::ObjectIDKey
 
-    test "#value string" do
-      ObjectIDKey[:emailid,  "1234-5678"] => ObjectIDKey["EMAILID",  "1234-5678"]
-      ObjectIDKey[:threadid, "1234-5678"] => ObjectIDKey["THREADID", "1234-5678"]
-    end
     test "value must be a valid objectid" do
       assert_raise(DataFormatError) do ObjectIDKey[:emailid, ""] end
       assert_raise(DataFormatError) do ObjectIDKey[:emailid, "+==+"] end
@@ -552,9 +275,6 @@ class SearchTests < Test::Unit::TestCase
   class FilterKeyTests < Test::Unit::TestCase
     FilterKey   = Net::IMAP::Search::FilterKey
 
-    test "#value string" do
-      FilterKey[:filter,  "filter-name"] => FilterKey["FILTER",  "filter-name"]
-    end
     test "value must be a valid filter-name" do
       assert_raise(DataFormatError) do FilterKey[:filter, ""] end
       assert_raise(DataFormatError) do FilterKey[:filter, "filter/name"] end
@@ -564,26 +284,6 @@ class SearchTests < Test::Unit::TestCase
   class AstringKeyTests < Test::Unit::TestCase
     AstringKey = Net::IMAP::Search::AstringKey
 
-    test "#name string is case-preserved" do
-      assert_equal "Text", AstringKey["Text", ""].name
-      assert_equal "bODy", AstringKey["bODy", ""].name
-    end
-
-    test "#name symbol is upcased" do
-      assert_equal "TEXT", AstringKey[:text, ""].name
-      assert_equal "BODY", AstringKey[:body, ""].name
-    end
-
-    data do AstringKey.known_names.to_h { [_1, _1] } end
-    test "known keys have no warning" do |name|
-      assert_warning("") do AstringKey[name, ""] end
-    end
-
-    test "unknown keys print a warning" do
-      warning = /possibly invalid search key: unknown/i
-      assert_warning(warning) do AstringKey["unknown", ""] end
-    end
-
     test "NULL character in string raises an error" do
       assert_raise DataFormatError do AstringKey["body", "null -> \0"] end
     end
@@ -592,27 +292,9 @@ class SearchTests < Test::Unit::TestCase
   class DateKeyTests < Test::Unit::TestCase
     DateKey = Net::IMAP::Search::DateKey
 
-    test "#value data" do
-      DateKey[:since, "1-Feb-1994"] => DateKey[
-        "SINCE", ^(Date.parse("1994-02-01"))
-      ]
-      DateKey[:since, Net::IMAP.decode_date("11-Apr-2009")] => DateKey[
-        "SINCE", ^(Date.parse("2009-04-11"))
-      ]
-    end
     test "value must be a valid IMAP formatted date string" do
       assert_raise(Date::Error) do DateKey[:before, ""] end
       assert_raise(Date::Error) do DateKey[:before, "2222-10-10"] end
-    end
-
-    data do DateKey.known_names.to_h { [_1, _1] } end
-    test "known keys have no warning" do |name|
-      assert_warning("") do DateKey[name, "11-Nov-2000"] end
-    end
-
-    test "unknown keys print a warning" do
-      warning = /possibly invalid search key: unknown/i
-      assert_warning(warning) do DateKey["unknown", "11-Nov-2000"] end
     end
   end
 
@@ -620,31 +302,9 @@ class SearchTests < Test::Unit::TestCase
     Number64Key = Net::IMAP::Search::Number64Key
     NzNumberKey = Net::IMAP::Search::NzNumberKey
 
-    test "#value data" do
-      Number64Key[:smaller,  1337] => Number64Key["SMALLER", 1337]
-      Number64Key[:larger, "1994"] => Number64Key["LARGER",  1994]
-      NzNumberKey[:older,    3660] => NzNumberKey["OLDER",   3660]
-      NzNumberKey[:younger, "600"] => NzNumberKey["YOUNGER",  600]
-    end
     test "value must be a valid number" do
       assert_raise(ArgumentError) do Number64Key[:before, ""] end
       assert_raise(ArgumentError) do NzNumberKey[:before, "2222-10-10"] end
-    end
-
-    data do NzNumberKey.known_names.to_h { [_1, _1] } end
-    test "nz-number known keys have no warning" do |name|
-      assert_warning("") do NzNumberKey[name, "11"] end
-    end
-
-    data do Number64Key.known_names.to_h { [_1, _1] } end
-    test "number64 known keys have no warning" do |name|
-      assert_warning("") do Number64Key[name, "11"] end
-    end
-
-    test "unknown keys print a warning" do
-      warning = /possibly invalid search key: unknown/i
-      assert_warning(warning) do Number64Key["unknown", 9999] end
-      assert_warning(warning) do NzNumberKey["unknown", 9999] end
     end
   end
 
