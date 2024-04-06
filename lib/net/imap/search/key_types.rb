@@ -5,35 +5,36 @@ module Net
     class Search
 
       module KeyTypes
+        @registry = {}
+        def self.[](name)   = @registry[name]
+        def self.fetch(...) = @registry.fetch(...)
+
         def self.search_key(const_name, types = {}, &)
-          key_type = new(const_name, types, &)
+          key_name = Types::SearchKeyName[const_name].to_sym.downcase
+          key_type = new(key_name, types, &)
           const_set const_name, key_type
+          @registry[key_type.key] = key_type
         end
 
-        def self.new(const_name, types = {}, &)
-          key_name = const_name.to_sym.downcase
+        def self.new(key_name, types = {}, &block)
           unless types.nil? || types.is_a?(Hash)
             types = {key_name.to_sym.downcase => types}
           end
-          if types
-            n_ary_search_key(key_name, types, &)
-          else
-            nullary(key_name, &)
+          Key.define(*types.keys) do
+            extend  KeyTypes.named key_name
+            include KeyTypes.typed types if types
           end
+            .then { block ? Class.new(_1, &block) : _1 }
         end
 
-        def self.named(name)
-          key = Types::SearchKeyName[name].to_sym.downcase
+        def self.named(key_name)
           Module.new do
-            def self.extended(mod) mod.const_set :Naming, self end
-            extend self
-
-            define_method(:key) { key }
+            define_method(:key) { key_name }
           end
         end
 
         def self.typed(types)
-          types.dup.freeze
+          types = types.dup.freeze
 
           Module.new do
             const_set :TYPES, types
@@ -58,30 +59,6 @@ module Net
 
             def coerce(...) = self.class.coerce(...)
           end
-        end
-
-        class NullaryKey < Key
-          def value = true
-        end
-
-        def self.nullary(name, &block)
-          NullaryKey.define do
-            extend KeyTypes.named name
-          end
-            .then { block ? Class.new(_1, &block) : _1 }
-        end
-
-        def self.unary_search_key(name, type, &block)
-          n_ary_search_key(name, {name.to_sym.downcase => type}, &block)
-        end
-
-        def self.n_ary_search_key(name, types, &block)
-          types.freeze
-          Key.define(*types.keys) do
-            extend  KeyTypes.named name
-            include KeyTypes.typed types if types
-          end
-            .then { block ? Class.new(_1, &block) : _1 }
         end
 
         search_key :All
@@ -190,20 +167,20 @@ module Net
 
         # See https://developers.google.com/gmail/imap/imap-extensions#extension_of_the_search_command_x-gm-raw
         search_key :XGmRaw, Types::Astring do
+          def self.key = :x_gm_raw
           def name = "X-GM-RAW"
-          def key  = :x_gm_raw
         end
 
         # See https://developers.google.com/gmail/imap/imap-extensions#access_to_the_unique_message_id_x-gm-msgid
         search_key :XGmMsgID, Types::UInt64 do
+          def self.key = :x_gm_msgid
           def name = "X-GM-MSGID"
-          def key  = :x_gm_msgid
         end
 
         # See https://developers.google.com/gmail/imap/imap-extensions#access_to_the_thread_id_x-gm-thrid
         search_key :XGmThrID, Types::UInt64 do
+          def self.key = :x_gm_thrid
           def name = "X-GM-THRID"
-          def key  = :x_gm_thrid
         end
 
       end

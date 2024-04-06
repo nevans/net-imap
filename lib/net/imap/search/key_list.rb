@@ -87,85 +87,30 @@ module Net
             [name, *args]
           end
 
-          # TODO: OR
-          # TODO: NOT, FUZZY
-          # TODO: HEADER
-          # TODO: MODSEQ
-          # TODO: ANNOTATE
-          def input_to_key(key, *rest)
-            key in Symbol | Types::Formats::LABEL or
-              raise TypeError, "expected string or symbol key"
+          # TODO: OR, NOT, FUZZY
+          def input_to_key(key, *args)
+            search_key = obsolete_input_to_key(key, *args) and
+              return search_key
             case key
-            when :all                   then KeyTypes::All[*rest]
-            when :savedatesupported     then KeyTypes::SaveDateSupported[*rest]
-            when :answered              then KeyTypes::Answered[*rest]
-            when :unanswered            then KeyTypes::Unanswered[*rest]
-            when :deleted               then KeyTypes::Deleted[*rest]
-            when :undeleted             then KeyTypes::Undeleted[*rest]
-            when :draft                 then KeyTypes::Draft[*rest]
-            when :undraft               then KeyTypes::Undraft[*rest]
-            when :flagged               then KeyTypes::Flagged[*rest]
-            when :unflagged             then KeyTypes::Unflagged[*rest]
-            when :seen                  then KeyTypes::Seen[*rest]
-            when :unseen                then KeyTypes::Unseen[*rest]
-            when :uid                   then KeyTypes::UID[*rest]
-            when :seq                   then KeyTypes::Seq[*rest]
-            when :keyword               then KeyTypes::Keyword[*rest]
-            when :unkeyword             then KeyTypes::Unkeyword[*rest]
-            when :filter                then KeyTypes::Filter[*rest]
-            when :emailid               then KeyTypes::EmailID[*rest]
-            when :threadid              then KeyTypes::ThreadID[*rest]
-            when :from                  then KeyTypes::From[*rest]
-            when :to                    then KeyTypes::To[*rest]
-            when :cc                    then KeyTypes::Cc[*rest]
-            when :bcc                   then KeyTypes::Bcc[*rest]
-            when :subject               then KeyTypes::Subject[*rest]
-            when :body                  then KeyTypes::Body[*rest]
-            when :text                  then KeyTypes::Text[*rest]
-            when :before                then KeyTypes::Before[*rest]
-            when :on                    then KeyTypes::On[*rest]
-            when :since                 then KeyTypes::Since[*rest]
-            when :sentbefore            then KeyTypes::SentBefore[*rest]
-            when :senton                then KeyTypes::SentOn[*rest]
-            when :sentsince             then KeyTypes::SentSince[*rest]
-            when :savedbefore           then KeyTypes::SavedBefore[*rest]
-            when :savedon               then KeyTypes::SavedOn[*rest]
-            when :savedsince            then KeyTypes::SavedSince[*rest]
-            when :larger                then KeyTypes::Larger[*rest]
-            when :smaller               then KeyTypes::Smaller[*rest]
-            when :older                 then KeyTypes::Older[*rest]
-            when :younger               then KeyTypes::Younger[*rest]
-            when :x_gm_raw              then KeyTypes::XGmRaw[*rest]
-            when :x_gm_msgid            then KeyTypes::XGmMsgID[*rest]
-            when :x_gm_thrid            then KeyTypes::XGmThrID[*rest]
-            when :header                then KeyTypes::Header[*rest]
-            when :modseq                then KeyTypes::ModSeq[*rest]
-            when :annotation            then KeyTypes::Annotation[*rest]
-
-            when :and                   then AndKey.new(*rest)
-            when :or                    then OrKey.new(*rest)
-            when :not                   then NotKey.new(*rest)
-            when :fuzzy                 then FuzzyKey.new(*rest)
-
-            when Types::Formats::LABEL  then KeyTypes::Generic[key, *rest]
+            in Symbol
+              KeyTypes.fetch(key)[*args]
+            in Types::Formats::LABEL
+              KeyTypes::Generic[key, *args]
             else
-              raise DataFormatError, "unknown search-key: %p" % [key]
+              raise DataFormatError, "unknown search-key type: %p" % [key]
             end
           end
 
-          def bool_key(key, bool)
-            case bool
-            when true  then key
-            when false then key.is_a?(Symbol) ? :"un#{key}" : "UN#{key}"
-            else
-              raise DataFormatError, "invalid search-key: %p => %p" % [
-                key, bool
-              ]
+          def obsolete_input_to_key(key, *args)
+            case key
+            when :and    then AndKey.new(*args)
+            when :or     then OrKey.new(*args)
+            when :not    then NotKey.new(*args)
+            when :fuzzy  then FuzzyKey.new(*args)
             end
           end
 
         end
-
       end
     end
   end
