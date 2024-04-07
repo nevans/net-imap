@@ -267,12 +267,6 @@ module Net
       autoload :KeyTypes,          "#{__dir__}/search/key_types"
 
       autoload :AndKey,       "#{__dir__}/search/keys"
-      autoload :AstringKey,   "#{__dir__}/search/keys"
-      autoload :FilterKey,    "#{__dir__}/search/keys"
-      autoload :FlagKey,      "#{__dir__}/search/keys"
-      autoload :HeaderKey,    "#{__dir__}/search/keys"
-      autoload :StringKey,    "#{__dir__}/search/keys"
-      autoload :UnaryKey,     "#{__dir__}/search/keys"
 
       attr_reader :keys, :charset
 
