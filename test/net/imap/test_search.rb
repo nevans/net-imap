@@ -18,9 +18,9 @@ class SearchTests < Test::Unit::TestCase
   DataFormatError = Net::IMAP::DataFormatError
 
   test "#keys for sequence-set search keys" do
-    Search.new(1..).keys => KeyList[KeyTypes::Seq(SequenceSet("1:*"))]
+    Search.new(1..).keys            => KeyList[KeyTypes::Seq(SequenceSet("1:*"))]
     Search.new({seq: [1, -1]}).keys => KeyList[KeyTypes::Seq(SequenceSet("1,*"))]
-    Search.new(seq: [1, -1]).keys => KeyList[KeyTypes::Seq(SequenceSet("1,*"))]
+    Search.new(seq: [1, -1]).keys   => KeyList[KeyTypes::Seq(SequenceSet("1,*"))]
   end
 
   test "#keys for nullary search keys, input as strings or symbols" do
@@ -247,64 +247,6 @@ class SearchTests < Test::Unit::TestCase
       assert_raise DataFormatError do OrKey[nil]    end
       assert_raise DataFormatError do OrKey.new([]) end
       assert_raise DataFormatError do OrKey.new({}) end
-    end
-  end
-
-  class FlagTests < Test::Unit::TestCase
-    FlagKey = Net::IMAP::Search::FlagKey
-
-    # TODO: move to tests for Generic
-    test "#name must be a valid label" do
-      assert_raise(DataFormatError) do FlagKey[""] end
-      assert_raise(DataFormatError) do FlagKey["1234"] end
-      assert_raise(DataFormatError) do FlagKey["*"] end
-      assert_raise(DataFormatError) do FlagKey['["all"]'] end
-      assert_raise(DataFormatError) do FlagKey["all flagged"] end
-    end
-  end
-
-  class ObjectIDKeyTests < Test::Unit::TestCase
-    ObjectIDKey = Net::IMAP::Search::ObjectIDKey
-
-    test "value must be a valid objectid" do
-      assert_raise(DataFormatError) do ObjectIDKey[:emailid, ""] end
-      assert_raise(DataFormatError) do ObjectIDKey[:emailid, "+==+"] end
-    end
-  end
-
-  class FilterKeyTests < Test::Unit::TestCase
-    FilterKey   = Net::IMAP::Search::FilterKey
-
-    test "value must be a valid filter-name" do
-      assert_raise(DataFormatError) do FilterKey[:filter, ""] end
-      assert_raise(DataFormatError) do FilterKey[:filter, "filter/name"] end
-    end
-  end
-
-  class AstringKeyTests < Test::Unit::TestCase
-    AstringKey = Net::IMAP::Search::AstringKey
-
-    test "NULL character in string raises an error" do
-      assert_raise DataFormatError do AstringKey["body", "null -> \0"] end
-    end
-  end
-
-  class DateKeyTests < Test::Unit::TestCase
-    DateKey = Net::IMAP::Search::DateKey
-
-    test "value must be a valid IMAP formatted date string" do
-      assert_raise(Date::Error) do DateKey[:before, ""] end
-      assert_raise(Date::Error) do DateKey[:before, "2222-10-10"] end
-    end
-  end
-
-  class NumberKeyTests < Test::Unit::TestCase
-    Number64Key = Net::IMAP::Search::Number64Key
-    NzNumberKey = Net::IMAP::Search::NzNumberKey
-
-    test "value must be a valid number" do
-      assert_raise(ArgumentError) do Number64Key[:before, ""] end
-      assert_raise(ArgumentError) do NzNumberKey[:before, "2222-10-10"] end
     end
   end
 

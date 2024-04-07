@@ -13,17 +13,6 @@ class SearchKeyTypesTests < Test::Unit::TestCase
   # TODO: Add :and, OR, NOT, FUZZY
   # TODO: Add :any?, :all?
 
-  test "date-based keys convert Time objects (#to_date)" do
-    date = Date.parse("2024-02-17")
-    time = Time.parse("2024-02-17T13:00:00")
-    assert_equal ["BEFORE", date], Before[time].to_a
-  end
-
-  test "date-based keys convert IMAP formatted date strings" do
-    date = Date.parse("2024-02-17")
-    assert_equal ["BEFORE", date], Before["17-Feb-2024"].to_a
-  end
-
   input = [1, 3..5, 33, -1]
   seqset = SequenceSet[input]
 
@@ -345,10 +334,10 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     assert_equal hash, search_key.to_h
   end
 
-  class SeqTests < Test::Unit::TestCase
+  class TypeCoercionTests < Test::Unit::TestCase
     include Search::KeyTypes
 
-    test "#seq" do
+    test "Seq converts to SequenceSet" do
       assert_equal SequenceSet["123:456,55,9"], Seq["123:456,55,9"].seq
       assert_equal SequenceSet["123456"],       Seq[123_456].seq
       Seq[123_456]    => Seq[seq: SequenceSet["123456"]]
@@ -359,7 +348,7 @@ class SearchKeyTypesTests < Test::Unit::TestCase
       Seq[987..]      => Seq[SequenceSet["987:*"]]
     end
 
-    test "#seq must be valid" do
+    test "Seq must be valid SequenceSet input" do
       assert_raise ArgumentError   do Seq[] end
       assert_raise ArgumentError   do Seq[1, 2, 3] end
       assert_raise DataFormatError do Seq[0] end
@@ -369,12 +358,8 @@ class SearchKeyTypesTests < Test::Unit::TestCase
       assert_raise DataFormatError do Seq[-2] end
       assert_raise DataFormatError do Seq["invalid"] end
     end
-  end
 
-  class UIDTests < Test::Unit::TestCase
-    include Search::KeyTypes
-
-    test "#uid" do
+    test "UID converts to SequenceSet" do
       assert_equal SequenceSet["123:456,55,9"], UID["123:456,55,9"].uid
       assert_equal SequenceSet["123456"],       UID[123_456].uid
       UID[123_456]    => UID[uid: SequenceSet["123456"]]
@@ -385,7 +370,7 @@ class SearchKeyTypesTests < Test::Unit::TestCase
       UID[987..]      => UID[SequenceSet["987:*"]]
     end
 
-    test "#uid must be valid" do
+    test "UID must be valid SequenceSet input" do
       assert_raise ArgumentError   do UID[] end
       assert_raise ArgumentError   do UID[1, 2, 3] end
       assert_raise DataFormatError do UID[0] end
@@ -395,16 +380,71 @@ class SearchKeyTypesTests < Test::Unit::TestCase
       assert_raise DataFormatError do UID[-2] end
       assert_raise DataFormatError do UID["invalid"] end
     end
-  end
 
-  class KeywordTests < Test::Unit::TestCase
-    include Search::KeyTypes
+    test "Keyword must be a valid flag-keyword" do
+      assert_raise DataFormatError do Keyword[""] end
+      assert_raise DataFormatError do Keyword["no spaces"] end
+      assert_raise DataFormatError do Keyword["(no-parens)"] end
+      assert_raise DataFormatError do Keyword["[no-rbra]"] end
+    end
 
-    test "keyword must be a valid flag-keyword" do
-      assert_raise(DataFormatError) do Keyword[""] end
-      assert_raise(DataFormatError) do Keyword["no spaces"] end
-      assert_raise(DataFormatError) do Keyword["(no-parens)"] end
-      assert_raise(DataFormatError) do Keyword["[no-rbra]"] end
+    test "NULL character in string raises an error" do
+      assert_raise DataFormatError do From["null -> \0"] end
+      assert_raise DataFormatError do To["null -> \0"] end
+      assert_raise DataFormatError do Cc["null -> \0"] end
+      assert_raise DataFormatError do Bcc["null -> \0"] end
+      assert_raise DataFormatError do Subject["null -> \0"] end
+      assert_raise DataFormatError do Body["null -> \0"] end
+      assert_raise DataFormatError do Text["null -> \0"] end
+      assert_raise DataFormatError do Header["List-ID", "null -> \0"] end
+    end
+
+    test "EmailID/ThreadID must be a valid objectid" do
+      assert_raise(DataFormatError) do EmailID[""] end
+      assert_raise(DataFormatError) do ThreadID["+==+"] end
+    end
+
+    test "Filter must be a valid filter-name" do
+      assert_raise(DataFormatError) do Filter[""] end
+      assert_raise(DataFormatError) do Filter["filter/name"] end
+    end
+
+    test "date values convert Time objects (#to_date)" do
+      date = Date.parse("2024-02-17")
+      time = Time.parse("2024-02-17T13:00:00")
+      assert_equal ["BEFORE", date], Before[time].to_a
+    end
+
+    test "date values convert IMAP formatted date strings" do
+      assert_equal ["SINCE",  Date.new(2024, 2, 17)], Since["17-Feb-2024"].to_a
+      assert_equal ["SENTON", Date.new(2024, 4, 7)],  SentOn["7-Apr-2024"].to_a
+    end
+
+    test "date values must be a valid IMAP formatted date string" do
+      assert_raise(Date::Error) do Before[""] end
+      assert_raise(Date::Error) do SavedOn["2222-10-10"] end
+    end
+
+    test "number64 must be a valid IMAP number (uint63)" do
+      assert_raise(ArgumentError)   do Larger["NaN"] end
+      assert_raise(DataFormatError) do Larger[-1] end
+      assert_raise(DataFormatError) do Smaller[2**63] end
+      assert_raise(DataFormatError) do ModSeq[2**63] end
+    end
+
+    test "nznumber must be a valid IMAP number (uint32, except 0)" do
+      assert_raise(ArgumentError)   do Older["NaN"] end
+      assert_raise(DataFormatError) do Older[-1] end
+      assert_raise(DataFormatError) do Younger[0] end
+      assert_raise(DataFormatError) do Younger[2**32] end
+    end
+
+    test "Generic#name must be a valid label" do
+      assert_raise(ArgumentError)   do Generic[] end
+      assert_raise(DataFormatError) do Generic[""] end
+      assert_raise(DataFormatError) do Generic["no spaces"] end
+      assert_raise(DataFormatError) do Generic["exclamation!"] end
+      assert_raise(DataFormatError) do Generic["question?"] end
     end
   end
 
