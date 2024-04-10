@@ -154,9 +154,11 @@ module Net
                    att:         Types::AttSearch,
                    data:        Types::NString8)
 
-        search_key(:Generic,
-                   name: Types::SearchKeyName,
-                   args: method(:Array)) do
+        search_key(
+          :Generic,
+          name: Types::SearchKeyName,
+          args: method(:Array)
+        ) do
           def self.[](*args, **kwargs)
             (args in name, *rest) ? super(name, rest, **kwargs) : super
           end
