@@ -325,21 +325,21 @@ class SearchKeyTypesTests < Test::Unit::TestCase
   # end
 
   data "X-GM-RAW", {
-    type: XGmRaw, input: ["has:attachment in:unread"],
+    type: X_Gm_Raw, input: ["has:attachment in:unread"],
     to_a: ["X-GM-RAW", "has:attachment in:unread"],
     to_h: {x_gm_raw: "has:attachment in:unread"},
   }, keep: true
 
   data "X-GM-MSGID", {
-    type: XGmMsgID, input: [1278455344230334865],
-    to_a: ["X-GM-MSGID", 1278455344230334865],
-    to_h: {x_gm_msgid: 1278455344230334865},
+    type: X_Gm_MsgID, input: [1278455344230334865],
+    to_a: ["X-GM-MSGID",    1278455344230334865],
+    to_h: {x_gm_msgid:      1278455344230334865},
   }, keep: true
 
   data "X-GM-THRID", {
-    type: XGmThrID, input: [1266894439832287888],
-    to_a: ["X-GM-THRID", 1266894439832287888],
-    to_h: {x_gm_thrid: 1266894439832287888},
+    type: X_Gm_ThrID, input: [1266894439832287888],
+    to_a: ["X-GM-THRID",    1266894439832287888],
+    to_h: {x_gm_thrid:      1266894439832287888},
   }, keep: true
 
   data "Generic (no args)", {
