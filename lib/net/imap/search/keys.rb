@@ -16,7 +16,10 @@ module Net
           end
         end
 
-        def name = self.class.key.upcase.to_s
+        def self.key = nil
+        def self.name = key&.name&.tr("_", "-")&.upcase
+
+        def name = self.class.name
         def args = deconstruct
         def to_a = [name, *args]
 

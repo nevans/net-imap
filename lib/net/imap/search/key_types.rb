@@ -195,22 +195,13 @@ module Net
         end
 
         # See https://developers.google.com/gmail/imap/imap-extensions#extension_of_the_search_command_x-gm-raw
-        search_key :XGmRaw, Types::Astring do
-          def self.key = :x_gm_raw
-          def name = "X-GM-RAW"
-        end
+        search_key :X_Gm_Raw, Types::Astring
 
         # See https://developers.google.com/gmail/imap/imap-extensions#access_to_the_unique_message_id_x-gm-msgid
-        search_key :XGmMsgID, Types::UInt64 do
-          def self.key = :x_gm_msgid
-          def name = "X-GM-MSGID"
-        end
+        search_key :X_Gm_MsgID, Types::UInt64
 
         # See https://developers.google.com/gmail/imap/imap-extensions#access_to_the_thread_id_x-gm-thrid
-        search_key :XGmThrID, Types::UInt64 do
-          def self.key = :x_gm_thrid
-          def name = "X-GM-THRID"
-        end
+        search_key :X_Gm_ThrID, Types::UInt64
 
       end
 
