@@ -16,15 +16,50 @@ module Net
           end
         end
 
+        # See documentation for #key.
+        #
+        # Returns +nil+ when the class represents multiple search-key types, for
+        # example: KeyTypes::Generic.
         def self.key = nil
+
+        # See documentation for #name.
+        #
+        # Returns +nil+ when the class represents multiple search-key types, for
+        # example: KeyTypes::Generic.
         def self.name = key&.name&.tr("_", "-")&.upcase
 
-        def name = self.class.name
-        def args = deconstruct
+        # Returns an array that represents the IMAP search-key, usually #name
+        # followed by #args.
         def to_a = [name, *args]
 
+        # Returns the IMAP string name for this search-key type.
+        #
+        # Returns a symbol when the IMAP grammar doesn't use a name for the
+        # search key:
+        # * <tt>:seq</tt> for sequence numbers and
+        # * <tt>:and</tt> for parenthesized lists.
+        #
+        # See also: #key
+        def name = self.class.name
+
+        # Returns an array of the search-key's arguments, not including #name.
+        #
+        # The result should be usable as an input to the class.[] method, to
+        # recreate an identical Key:
+        #    key == key.class[*key.args] # => true
+        def args = deconstruct
+
+        # Returns a hash that represents the Key object.  See #key and #value.
+        #
+        # The result should be usable as an input to Key[] to recreate an
+        # identical Key:
+        #    key == Key[key.to_h] # => true
         def to_h = {key => value}
+
+        # A Symbol to be used as the key for #to_h.  See also: #name.
         def key  = self.class.key
+
+        # An object to be used as the value for #to_h.  See also #args.
         def value
           args.empty? ? true : args.reverse.reduce {|acc, arg| {arg => acc} }
         end
