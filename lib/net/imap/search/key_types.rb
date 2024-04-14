@@ -170,6 +170,15 @@ module Net
           def to_a  = [name, *key1, *key2]
           def value = [key1.to_h, key2.to_h]
 
+          # def value
+          #   val1, val2 = key1.to_h, key2.to_h
+          #   if val1.length == 1 && val2.length == 1 && val1.keys != val2.keys
+          #     val1.merge(val2)
+          #   else
+          #     [val1, val2]
+          #   end
+          # end
+
         end
 
         search_key(
