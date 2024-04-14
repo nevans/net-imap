@@ -154,6 +154,24 @@ module Net
                    att:         Types::AttSearch,
                    data:        Types::NString8)
 
+        search_key :Or, key1: Key, key2: Key do
+          def self.[](*args, **kwargs)
+            return super if args.empty? || !kwargs.empty?
+            case args
+            in [key1, key2]        then super(key1:, key2:)
+            in [key1, key2, *rest] then super(key1, self[key2, *rest])
+            in [Array => args]     then self[*args]
+            in [Hash  => hash]     then self[*KeyList[hash].keys]
+            else
+              raise ArgumentError, "expected multiple search keys"
+            end
+          end
+
+          def to_a  = [name, *key1, *key2]
+          def value = [key1.to_h, key2.to_h]
+
+        end
+
         search_key(
           :Generic,
           name: Types::SearchKeyName,

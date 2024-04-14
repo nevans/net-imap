@@ -15,6 +15,8 @@ module Net
           raise DataFormatError, "invalid empty search keys" if @keys.empty?
         end
 
+        def to_key = keys.length == 1 ? keys.first : AndKey[*keys]
+
         private
 
         def extract_keys(keys)
@@ -31,6 +33,7 @@ module Net
           def extract_keys(keys)
             keys.flat_map {|value|
               case value
+              when Key                    then value
               when SequenceSet::Coercible then KeyTypes::Seq[value]
               when String, Symbol         then nullary_key(value)
               when Array                  then AndKey[*value]
@@ -82,6 +85,8 @@ module Net
             end
           end
 
+          # TODO: smart negation (choose between "UN"-prefix or "NOT")
+          # TODO: delegate negation to the keys (or key types) themselves
           def negate(name, *args)
             name = name.is_a?(Symbol) ? :"un#{name}" : "UN#{name}"
             [name, *args]
@@ -104,7 +109,6 @@ module Net
           def obsolete_input_to_key(key, *args)
             case key
             when :and    then AndKey.new(*args)
-            when :or     then OrKey.new(*args)
             when :not    then NotKey.new(*args)
             when :fuzzy  then FuzzyKey.new(*args)
             end
