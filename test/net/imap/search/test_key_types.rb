@@ -276,6 +276,54 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     to_h: {annotation: {"/comment" => {"value" => "IMAP4"}}},
   }, keep: true
 
+  data "Or (two simple inputs)", {
+    type: Or, input: ["56:78,*", "seen"],
+    args: [Seq["56:78,*"], Seen[]],
+    to_a: ["OR", SequenceSet["56:78,*"], "SEEN"],
+    to_h: {or: [{seq: SequenceSet["56:78,*"]}, {seen: true}]},
+  }, keep: true
+
+  data "Or (two hash inputs)", {
+    type: Or, input: [{subject: "topic"}, {from: "me", to: "you"}],
+    args: [Subject["topic"], Search::AndKey[From["me"], To["you"]]],
+    to_a: ["OR", "SUBJECT", "topic", %w[FROM me TO you]],
+    to_h: {or: [{subject: "topic"}, {from: "me", to: "you"}]},
+  }, keep: true
+
+  data "Or (more than two inputs)", {
+    type: Or,
+    input: ["56:78,*",
+            %w[seen flagged],
+            {subject: "topic"},
+            {from: "me", to: "you"}],
+    args: [Seq["56:78,*"],
+           Or[Search::AndKey[Seen[], Flagged[]],
+              Or[Subject["topic"],
+                 Search::AndKey[From["me"], To["you"]] ] ] ],
+    to_a: ["OR", SequenceSet["56:78,*"],
+           "OR", %w[SEEN FLAGGED],
+           "OR", "SUBJECT", "topic", %w[FROM me TO you]],
+    to_h: {or: [ {seq: SequenceSet["56:78,*"]},
+                 {or: [{seen: true, flagged: true},
+                       {or: [ {subject: "topic"},
+                              {from: "me", to: "you"} ]} ]} ]},
+  }, keep: true
+
+  # data "Or (nested)", {
+  #   type: Or, input: ["56:78,*", "seen", {subject: "foo"}],
+  #   to_a: %w[OR 56:78,* OR SEEN SUBJECT foo],
+  #   to_h: {or: ["56:76,*", {or: ["seen", {subject: "foo"}]}]},
+  # }, keep: true
+
+  # test "array elements are not flattened or combined" do
+  #   OrKey[123, 555] => OrKey[
+  #     KeyTypes::Seq[SequenceSet["123"]], KeyTypes::Seq[SequenceSet["555"]]
+  #   ]
+  #   OrKey["ALL", "56:78,*", "seen"] => OrKey[
+  #     KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen
+  #   ]
+  # end
+
   data "X-GM-RAW", {
     type: XGmRaw, input: ["has:attachment in:unread"],
     to_a: ["X-GM-RAW", "has:attachment in:unread"],
@@ -445,6 +493,13 @@ class SearchKeyTypesTests < Test::Unit::TestCase
       assert_raise(DataFormatError) do Generic["no spaces"] end
       assert_raise(DataFormatError) do Generic["exclamation!"] end
       assert_raise(DataFormatError) do Generic["question?"] end
+    end
+
+    test "OR with too few criteria" do
+      assert_raise ArgumentError do Or[]       end
+      assert_raise ArgumentError do Or[nil]    end
+      assert_raise ArgumentError do Or[[]] end
+      assert_raise DataFormatError do Or[{}] end
     end
   end
 

@@ -5,6 +5,17 @@ module Net
     class Search
 
       class Key < Data
+        def self.[](key)
+          case key
+          when Key                    then key
+          when SequenceSet::Coercible then KeyTypes::Seq[key]
+          when String, Symbol         then KeyTypes[key.downcase.to_sym][]
+          when Array                  then AndKey[*key]
+          when Hash                   then KeyList.new(key).to_key
+          else raise DataFormatError, "invalid search-key: %p" % [key]
+          end
+        end
+
         def name = self.class.key.upcase.to_s
         def args = deconstruct
         def to_a = [name, *args]
@@ -23,8 +34,33 @@ module Net
         def deconstruct       = keys.deconstruct
       end
 
-      AndKey        = Class.new(KeyListKey)
-      OrKey         = Class.new(KeyListKey)
+      class AndKey < KeyListKey
+        def self.key = :and
+        def name = key
+        def to_a = [keys.flat_map(&:to_a)]
+        def to_h = value.then { _1.is_a?(Hash) ? _1 : {key => value} }
+        def value = merged_value.then {|ary| (ary in [hash]) ? hash : ary }
+
+        private
+
+        def merged_value = merge_array array_value
+        def array_value = keys.map(&:to_h)
+
+        def merge_array(array_value)
+          array_value.each_with_object([{}]) do |hash, ary|
+            merge_value(ary, hash)
+          end
+        end
+
+        def merge_value(ary, hash)
+          last = ary.last
+          if hash.size == 1 && (key, * = hash.first) && !last.key?(key)
+            last.update(hash)
+          else
+            ary << hash
+          end
+        end
+      end
 
     end
   end

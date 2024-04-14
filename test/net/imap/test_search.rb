@@ -12,7 +12,6 @@ class SearchTests < Test::Unit::TestCase
   # TODO: convert to new style (currently under KeyTypes)
   AndKey      = Net::IMAP::Search::AndKey
   KeyList     = Net::IMAP::Search::KeyList
-  OrKey       = Net::IMAP::Search::OrKey
 
   SequenceSet     = Net::IMAP::SequenceSet
   DataFormatError = Net::IMAP::DataFormatError
@@ -220,33 +219,6 @@ class SearchTests < Test::Unit::TestCase
       assert_raise DataFormatError do AndKey[nil]    end
       assert_raise DataFormatError do AndKey.new([]) end
       assert_raise DataFormatError do AndKey.new({}) end
-    end
-  end
-
-  class OrKeyTests < Test::Unit::TestCase
-    test "#keys for one or more search keys" do
-      OrKey["56:78,*", "seen", {subject: "foo"}] => OrKey[
-        KeyTypes::Seq[SequenceSet["56:78,*"]],
-        KeyTypes::Seen,
-        KeyTypes::Subject["foo"]
-      ]
-    end
-
-    # test "array elements are not flattened or combined" do
-    #   OrKey[123, 555] => OrKey[
-    #     KeyTypes::Seq[SequenceSet["123"]], KeyTypes::Seq[SequenceSet["555"]]
-    #   ]
-    #   OrKey["ALL", "56:78,*", "seen"] => OrKey[
-    #     KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen
-    #   ]
-    # end
-
-    test "invalid - no criteria" do
-      assert_raise ArgumentError   do OrKey.new     end
-      assert_raise DataFormatError do OrKey[]       end
-      assert_raise DataFormatError do OrKey[nil]    end
-      assert_raise DataFormatError do OrKey.new([]) end
-      assert_raise DataFormatError do OrKey.new({}) end
     end
   end
 
