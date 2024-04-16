@@ -15,7 +15,7 @@ module Net
           raise DataFormatError, "invalid empty search keys" if @keys.empty?
         end
 
-        def to_key = keys.length == 1 ? keys.first : AndKey[*keys]
+        def to_key = keys.length == 1 ? keys.first : KeyTypes::And[*keys]
 
         private
 
@@ -36,7 +36,7 @@ module Net
               when Key                    then value
               when SequenceSet::Coercible then KeyTypes::Seq[value]
               when String, Symbol         then nullary_key(value)
-              when Array                  then AndKey[*value]
+              when Array                  then KeyTypes::And[*value]
               when Hash                   then KeysHash.new(value).keys
               else raise DataFormatError, "invalid search-key: %p" % [value]
               end
@@ -108,7 +108,6 @@ module Net
 
           def obsolete_input_to_key(key, *args)
             case key
-            when :and    then AndKey.new(*args)
             when :not    then NotKey.new(*args)
             when :fuzzy  then FuzzyKey.new(*args)
             end

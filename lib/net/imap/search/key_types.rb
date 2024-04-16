@@ -153,12 +153,46 @@ module Net
                    att:         Types::AttSearch,
                    data:        Types::NString8)
 
+        search_key :And, keys: ->{ KeyList[*Array(_1)].keys } do
+          def self.[](*keys, **kwargs)
+            return super if kwargs.any?
+            return super if keys in [Array]
+            new(keys:)
+          end
+
+          def name = key
+
+          def deconstruct = keys.deconstruct
+          def args        = [keys.flat_map(&:to_a)]
+          def value       = merged_value.then { (_1 in [hash]) ? hash : _1 }
+
+          private
+
+          def merged_value = merge_array array_value
+          def array_value = keys.map(&:to_h)
+
+          def merge_array(array_value)
+            array_value.each_with_object([{}]) do |hash, ary|
+              merge_value(ary, hash)
+            end
+          end
+
+          def merge_value(ary, hash)
+            last = ary.last
+            if hash.size == 1 && (key, * = hash.first) && !last.key?(key)
+              last.update(hash)
+            else
+              ary << hash
+            end
+          end
+        end
+
         search_key :Or, key1: Key, key2: Key do
           def self.[](*args, **kwargs)
             return super if args.empty? || !kwargs.empty?
             case args
             in [key1, key2]        then super(key1:, key2:)
-            in [key1, key2, *rest] then super(key1, self[key2, *rest])
+            in [key1, key2, *rest] then super(key1:, key2: self[key2, *rest])
             in [Array => args]     then self[*args]
             in [Hash  => hash]     then self[*KeyList[hash].keys]
             else
@@ -167,7 +201,7 @@ module Net
           end
 
           def to_a  = [name, *key1, *key2]
-          def value = [key1.to_h, key2.to_h]
+          def value = [key1, key2].map { inner_to_h _1 }
 
           # def value
           #   val1, val2 = key1.to_h, key2.to_h
@@ -177,6 +211,12 @@ module Net
           #     [val1, val2]
           #   end
           # end
+
+          private
+
+          def inner_to_h(inner_key)
+            inner_key.is_a?(And) ? inner_key.value : inner_key.to_h
+          end
 
         end
 
@@ -190,7 +230,7 @@ module Net
           end
 
           def key = name
-          def deconstruct = to_a
+          def deconstruct = super.flatten
         end
 
         # See https://developers.google.com/gmail/imap/imap-extensions#extension_of_the_search_command_x-gm-raw
