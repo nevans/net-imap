@@ -80,7 +80,6 @@ module Net
 
         search_key :Seq, SequenceSet do
           def name = key
-          def to_a = [seq]
         end
 
         search_key :UID,          SequenceSet

@@ -24,7 +24,7 @@ module Net
 
         # Returns an array that represents the IMAP search-key, usually #name
         # followed by #args.
-        def to_a = [name, *args]
+        def to_a = name.is_a?(String) ? [name, *args] : args
 
         # Returns the IMAP string name for this search-key type.
         #
