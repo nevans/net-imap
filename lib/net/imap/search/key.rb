@@ -22,12 +22,6 @@ module Net
         # example: KeyTypes::Generic.
         def self.key = nil
 
-        # See documentation for #name.
-        #
-        # Returns +nil+ when the class represents multiple search-key types, for
-        # example: KeyTypes::Generic.
-        def self.name = key&.name&.tr("_", "-")&.upcase
-
         # Returns an array that represents the IMAP search-key, usually #name
         # followed by #args.
         def to_a = [name, *args]
@@ -40,19 +34,15 @@ module Net
         # * <tt>:and</tt> for parenthesized lists.
         #
         # See also: #key
-        def name = self.class.name
+        def name = key&.name&.tr("_", "-")&.upcase
 
-        # Returns an array of the search-key's arguments, not including #name.
-        #
-        # The result should be usable as an input to the class.[] method, to
-        # recreate an identical Key:
-        #    key == key.class[*key.args] # => true
+        # An array of IMAP search-key argumwnts.  Prepended with #name to create
+        # #to_a.  Usually the same as #deconstruct.
         def args = deconstruct
 
         # Returns a hash that represents the Key object.  See #key and #value.
         #
-        # The result should be usable as an input to Key[] to recreate an
-        # identical Key:
+        # The result can be sent to Key[] to recreate the key:
         #    key == Key[key.to_h] # => true
         def to_h = {key => value}
 
