@@ -276,16 +276,24 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     to_h: {annotation: {"/comment" => {"value" => "IMAP4"}}},
   }, keep: true
 
+  data "And (parenthesized list)", {
+    type: And,
+    input: %w[ALL 56:78,* seen],
+    deconstruct: [All[], Seq[SequenceSet["56:78,*"]], Seen[]],
+    to_a: [["ALL", SequenceSet["56:78,*"], "SEEN"]],
+    to_h: {and: {all: true, seq: SequenceSet["56:78,*"], seen: true}},
+  }, keep: true
+
   data "Or (two simple inputs)", {
     type: Or, input: ["56:78,*", "seen"],
-    args: [Seq["56:78,*"], Seen[]],
+    deconstruct: [Seq["56:78,*"], Seen[]],
     to_a: ["OR", SequenceSet["56:78,*"], "SEEN"],
     to_h: {or: [{seq: SequenceSet["56:78,*"]}, {seen: true}]},
   }, keep: true
 
   data "Or (two hash inputs)", {
     type: Or, input: [{subject: "topic"}, {from: "me", to: "you"}],
-    args: [Subject["topic"], Search::AndKey[From["me"], To["you"]]],
+    deconstruct: [Subject["topic"], And[From["me"], To["you"]]],
     to_a: ["OR", "SUBJECT", "topic", %w[FROM me TO you]],
     to_h: {or: [{subject: "topic"}, {from: "me", to: "you"}]},
   }, keep: true
@@ -296,10 +304,10 @@ class SearchKeyTypesTests < Test::Unit::TestCase
             %w[seen flagged],
             {subject: "topic"},
             {from: "me", to: "you"}],
-    args: [Seq["56:78,*"],
-           Or[Search::AndKey[Seen[], Flagged[]],
-              Or[Subject["topic"],
-                 Search::AndKey[From["me"], To["you"]] ] ] ],
+    deconstruct: [ Seq["56:78,*"],
+                   Or[ And[Seen[], Flagged[]],
+                       Or[ Subject["topic"],
+                           And[From["me"], To["you"]] ] ] ],
     to_a: ["OR", SequenceSet["56:78,*"],
            "OR", %w[SEEN FLAGGED],
            "OR", "SUBJECT", "topic", %w[FROM me TO you]],
@@ -309,20 +317,27 @@ class SearchKeyTypesTests < Test::Unit::TestCase
                               {from: "me", to: "you"} ]} ]} ]},
   }, keep: true
 
-  # data "Or (nested)", {
-  #   type: Or, input: ["56:78,*", "seen", {subject: "foo"}],
-  #   to_a: %w[OR 56:78,* OR SEEN SUBJECT foo],
-  #   to_h: {or: ["56:76,*", {or: ["seen", {subject: "foo"}]}]},
-  # }, keep: true
-
-  # test "array elements are not flattened or combined" do
-  #   OrKey[123, 555] => OrKey[
-  #     KeyTypes::Seq[SequenceSet["123"]], KeyTypes::Seq[SequenceSet["555"]]
-  #   ]
-  #   OrKey["ALL", "56:78,*", "seen"] => OrKey[
-  #     KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen
-  #   ]
-  # end
+  data "Or (hash input)", {
+    type: Or,
+    input: [{seq: "56:78,*",
+             and: %w[seen flagged],
+             subject: "topic",
+             from: "me",
+             to: "you"}],
+    deconstruct: [ Seq["56:78,*"],
+                   Or[ And[Seen[], Flagged[]],
+                       Or[ Subject["topic"],
+                           Or[From["me"], To["you"]] ] ] ],
+    to_a: ["OR", SequenceSet["56:78,*"],
+           "OR", %w[SEEN FLAGGED],
+           "OR", "SUBJECT", "topic",
+           "OR", "FROM", "me", "TO", "you"],
+    to_h: {or: [ {seq: SequenceSet["56:78,*"]},
+                 {or: [{seen: true, flagged: true},
+                       {or: [ {subject: "topic"},
+                               {or: [ {from: "me"},
+                                      {to: "you"} ]} ]} ]} ]},
+  }, keep: true
 
   data "X-GM-RAW", {
     type: X_Gm_Raw, input: ["has:attachment in:unread"],
@@ -344,21 +359,18 @@ class SearchKeyTypesTests < Test::Unit::TestCase
 
   data "Generic (no args)", {
     type: Generic, input: ["Abc"],
-    args: [],
     to_a: ["Abc"],
     to_h: {"Abc" => true},
   }, keep: true
 
   data "Generic (single arg)", {
     type: Generic, input: ["abc", 123],
-    args: [123],
     to_a: ["abc", 123],
     to_h: {"abc" => 123},
   }, keep: true
 
   data "Generic (multiple args)", {
     type: Generic, input: ["a", "b", "c", 123],
-    args: ["b", "c", 123],
     to_a: ["a", "b", "c", 123],
     to_h: {"a" => {"b" => {"c" => 123}}},
   }, keep: true
@@ -368,18 +380,27 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     assert_equal expected, type[*input].to_a
   end
 
-  test "#to_h" do
+  test "#to_h" do |data|
     data => type:, input:, to_h: expected
     assert_equal expected, type[*input].to_h
   end
 
-  test "can be loaded by hash" do |data|
+  test "#deconstruct" do |data|
+    data => {type:, input:}
+    expected = data[:deconstruct] || input
+    key = type[*input]
+    assert_equal expected, key.deconstruct
+    assert_equal key, type[*expected]
+  end
+
+  test "#to_h result creates an identical key via Key[hash]" do |data|
     data => type:, input:, to_h: hash
-    args = data[:args] || input
-    Search::KeyList[hash] => [search_key]
-    assert_equal type, search_key.class
-    assert_equal args, search_key.args
-    assert_equal hash, search_key.to_h
+    assert_equal type[*input], Search::Key[hash]
+  end
+
+  test "#to_h result creates an identical key via KeyList[hash]" do |data|
+    data => to_h: hash
+    assert_equal Search::KeyList[hash].keys, [Search::Key[hash]]
   end
 
   class TypeCoercionTests < Test::Unit::TestCase
@@ -496,10 +517,17 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     end
 
     test "OR with too few criteria" do
-      assert_raise ArgumentError do Or[]       end
-      assert_raise ArgumentError do Or[nil]    end
-      assert_raise ArgumentError do Or[[]] end
+      assert_raise ArgumentError   do Or[]       end
+      assert_raise ArgumentError   do Or[nil]    end
+      assert_raise ArgumentError   do Or[[]] end
       assert_raise DataFormatError do Or[{}] end
+    end
+
+    test ":and (parens list) with too few criteria" do
+      assert_raise DataFormatError do And[]       end
+      assert_raise DataFormatError do And[nil]    end
+      assert_raise DataFormatError do And[[]] end
+      assert_raise DataFormatError do And[{}] end
     end
   end
 

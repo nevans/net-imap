@@ -10,7 +10,7 @@ module Net
           when Key                    then key
           when SequenceSet::Coercible then KeyTypes::Seq[key]
           when String, Symbol         then KeyTypes[key.downcase.to_sym][]
-          when Array                  then AndKey[*key]
+          when Array                  then KeyTypes::And[*key]
           when Hash                   then KeyList.new(key).to_key
           else raise DataFormatError, "invalid search-key: %p" % [key]
           end

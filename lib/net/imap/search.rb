@@ -266,8 +266,6 @@ module Net
       autoload :KeyNameValidation, "#{__dir__}/search/key_name_validation"
       autoload :KeyTypes,          "#{__dir__}/search/key_types"
 
-      autoload :AndKey,       "#{__dir__}/search/and_key"
-
       attr_reader :keys, :charset
 
       def initialize(*keys, charset: nil, **kwkeys)

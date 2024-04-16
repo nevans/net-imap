@@ -9,8 +9,6 @@ class SearchTests < Test::Unit::TestCase
   KeysHash    = Net::IMAP::Search::KeyList::KeysHash
   KeyTypes    = Net::IMAP::Search::KeyTypes
 
-  # TODO: convert to new style (currently under KeyTypes)
-  AndKey      = Net::IMAP::Search::AndKey
   KeyList     = Net::IMAP::Search::KeyList
 
   SequenceSet     = Net::IMAP::SequenceSet
@@ -69,25 +67,25 @@ class SearchTests < Test::Unit::TestCase
     ]
   end
 
-  test "array args convert to parenthesized list (AndKey)" do
+  test "array args convert to parenthesized list (KeyTypes::And)" do
     Search.new(:flagged, [{seq: 123}, :seen], {subject: ""}).keys => [
       KeyTypes::Flagged,
-      AndKey[KeyTypes::Seq, KeyTypes::Seen],
+      KeyTypes::And[KeyTypes::Seq, KeyTypes::Seen],
       KeyTypes::Subject
     ]
   end
 
-  test "creating parenthesized list (AndKey)" do
+  test "creating parenthesized list (KeyTypes::And)" do
     Search.new(:flagged, [{seq: 123}, :seen], {subject: ""}).keys => [
-      KeyTypes::Flagged, AndKey[KeyTypes::Seq, KeyTypes::Seen],
+      KeyTypes::Flagged, KeyTypes::And[KeyTypes::Seq, KeyTypes::Seen],
       KeyTypes::Subject
     ]
     Search.new(flagged: true, and: [{seq: 123}, :seen], subject: "").keys => [
-      KeyTypes::Flagged, AndKey[KeyTypes::Seq, KeyTypes::Seen],
+      KeyTypes::Flagged, KeyTypes::And[KeyTypes::Seq, KeyTypes::Seen],
       KeyTypes::Subject
     ]
     Search.new(flagged: true, and: {seq: 123, seen: true}).keys => [
-      KeyTypes::Flagged, AndKey[KeyTypes::Seq, KeyTypes::Seen]
+      KeyTypes::Flagged, KeyTypes::And[KeyTypes::Seq, KeyTypes::Seen]
     ]
   end
 
@@ -203,22 +201,6 @@ class SearchTests < Test::Unit::TestCase
                            [:header, "references", "bar"]]
       # keys_hash.keys => [HeaderKey["sender", "foo"],
       #                    HeaderKey["references", "bar"]]
-    end
-  end
-
-  class AndKeyTests < Test::Unit::TestCase
-    test "#keys for one or more search keys" do
-      AndKey["ALL", "56:78,*", "seen"] => AndKey[
-        KeyTypes::All, KeyTypes::Seq[SequenceSet["56:78,*"]], KeyTypes::Seen,
-      ]
-    end
-
-    test "invalid - no criteria" do
-      assert_raise ArgumentError   do AndKey.new     end
-      assert_raise DataFormatError do AndKey[]       end
-      assert_raise DataFormatError do AndKey[nil]    end
-      assert_raise DataFormatError do AndKey.new([]) end
-      assert_raise DataFormatError do AndKey.new({}) end
     end
   end
 
