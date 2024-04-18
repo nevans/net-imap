@@ -274,7 +274,6 @@ module Net
     class Search
       autoload :Key,               "#{__dir__}/search/key"
       autoload :KeyList,           "#{__dir__}/search/key_list"
-      autoload :KeyNameValidation, "#{__dir__}/search/key_name_validation"
       autoload :KeyTypes,          "#{__dir__}/search/key_types"
 
       attr_reader :keys, :charset
