@@ -16,42 +16,44 @@ module Net
           end
         end
 
-        # See documentation for #key.
+        # See documentation for #hash_key.  Returns +nil+ when the class
+        # represents multiple search-key types, for example: KeyTypes::Generic.
         #
-        # Returns +nil+ when the class represents multiple search-key types, for
-        # example: KeyTypes::Generic.
-        def self.key = nil
+        # See also #imap_name.
+        def self.hash_key = nil
 
-        # Returns an array that represents the IMAP search-key, usually #name
-        # followed by #args.
-        def to_a = name.is_a?(String) ? [name, *args] : args
+        # See documentation for #imap_name.  Returns +nil+ when the class
+        # represents multiple search-key types, for example: KeyTypes::Generic.
+        def self.imap_name = hash_key&.name&.tr("_", "-")&.upcase
 
-        # Returns the IMAP string name for this search-key type.
+        # Returns an array that represents the IMAP search-key, usually
+        # #imap_name followed by #imap_args.
+        def to_a = imap_name.is_a?(String) ? [imap_name, *imap_args] : imap_args
+
+        # Returns the IMAP string name for this search-key type.  Returns +nil+
+        # when the IMAP grammar doesn't use a name for the search key.
         #
-        # Returns a symbol when the IMAP grammar doesn't use a name for the
-        # search key:
-        # * <tt>:seq</tt> for sequence numbers and
-        # * <tt>:and</tt> for parenthesized lists.
+        # See also: #hash_key
+        def imap_name = self.class.imap_name
+
+        # An array of IMAP search-key argumwnts.  Prepended with #imap_name to
+        # create #to_a.  Usually the same as #deconstruct.
+        def imap_args = deconstruct
+
+        # Returns a hash serializatiun of the search key, based on #hash_key and
+        # #hash_value.  The result can be sent to Key[] to recreate the search
+        # key:
         #
-        # See also: #key
-        def name = key&.name&.tr("_", "-")&.upcase
+        #     search_key == Net::IMAP::Search::Key[search_key.to_h] # => true
+        def to_h = {hash_key => hash_value}
 
-        # An array of IMAP search-key argumwnts.  Prepended with #name to create
-        # #to_a.  Usually the same as #deconstruct.
-        def args = deconstruct
+        # A Symbol to be used as the key for #to_h.  See also: #imap_name.
+        def hash_key = self.class.hash_key
 
-        # Returns a hash that represents the Key object.  See #key and #value.
-        #
-        # The result can be sent to Key[] to recreate the key:
-        #    key == Key[key.to_h] # => true
-        def to_h = {key => value}
-
-        # A Symbol to be used as the key for #to_h.  See also: #name.
-        def key  = self.class.key
-
-        # An object to be used as the value for #to_h.  See also #args.
-        def value
-          args.empty? ? true : args.reverse.reduce {|acc, arg| {arg => acc} }
+        # An object to be used as the value for #to_h.  See also #imap_args.
+        def hash_value
+          return true if imap_args.empty?
+          imap_args.reverse.reduce {|acc, arg| {arg => acc} }
         end
       end
 

@@ -199,8 +199,8 @@ class SearchTests < Test::Unit::TestCase
       keys_hash.compacted => ^input
       keys_hash.inputs => [[:header, "sender", "foo"],
                            [:header, "references", "bar"]]
-      # keys_hash.keys => [HeaderKey["sender", "foo"],
-      #                    HeaderKey["references", "bar"]]
+      keys_hash.keys => [KeyTypes::Header["sender", "foo"],
+                         KeyTypes::Header["references", "bar"]]
     end
   end
 
