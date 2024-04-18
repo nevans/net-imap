@@ -3,6 +3,19 @@
 module Net
   class IMAP < Protocol
 
+    # Search is used to validate and format arguments to IMAP
+    # {#search}[rdoc-ref:IMAP#search],
+    # {#sort}[rdoc-ref:IMAP#sort],
+    # {#thread}[rdoc-ref:IMAP#thread],
+    # {#uid_search}[rdoc-ref:IMAP#uid_search],
+    # {#uid_sort}[rdoc-ref:IMAP#uid_sort], and
+    # {#uid_thread}[rdoc-ref:IMAP#uid_thread].
+    #
+    # The class represents <tt>search-program</tt> from the \IMAP grammar: a
+    # list of one or more <tt>search-key</tt>s with an optional +charset+.   A
+    # search program with multiple search keys matches the intersection of all
+    # of its search keys.
+    #
     # == Search key definitions
     #
     # The search keys described below are defined by
@@ -270,6 +283,63 @@ module Net
     #
     #   <em>Requires the annotations (+ANNOTATE-EXPERIMENT-1+) extension</em>.
     #   {[RFC5257]}[https://www.rfc-editor.org/rfc/rfc5257.html].
+    #
+    # === Virtual search keys
+    #
+    # Use the following "virtual search keys" to generate search keys for system
+    # flags similarly to keyword flags.
+    # +:flags+::
+    #   <tt>{flags: flags}</tt> matches messages with the specified flag(s).
+    #   The flags list may contain both system flags (as symbols) and keyword
+    #   flags (as strings).
+    # +:unflags+::
+    #   <tt>{unflags: flag}</tt> matches messages without the specified flag(s).
+    #   The flags list may contain both system flags (as symbols) and keyword
+    #   flags (as strings).
+    #
+    # The following match _any_ of the given values.  +OR+ search keys will be
+    # generated, if multiple values are given.
+    # +:size+::
+    #   <tt>{size: sizes}</tt> matches messages with +RFC822.SIZE+
+    #   within the specified range.
+    #
+    #   <em>The +:size+ "virtual search key" generates search keys using
+    #   +LARGER+ and +SMALLER+.</em>
+    #
+    # +:internaldate+::
+    #   <tt>{internaldate: dates}</tt> matches messages whose internal date is
+    #   any of the specified dates.  _dates_ should be an array of dates and
+    #   ranges of dates.
+    #
+    #   <em>The +:internaldate+ "virtual search key" generates search keys using
+    #   +BEFORE+, +ON+, and +SINCE+.</em>
+    #
+    # +:within+::
+    #   <tt>{within: intervals}</tt> matches messages with +INTERNALDATE+
+    #   younger than the specified interval number of seconds ago.
+    #
+    #   <em>The +:within+ "virtual search key" generates search keys using
+    #   +EARLIER+ and +YOUNGER+, which both
+    #   require the +WITHIN+ extension</em>.
+    #   {[RFC5032]}[https://www.rfc-editor.org/rfc/rfc5032.html]
+    #
+    # +:date+::
+    #   <tt>{date: dates}</tt> matches messages whose +Date:+ header field is
+    #   any of the specified dates.  _dates_ should be an array of dates and
+    #   ranges of dates.
+    #
+    #   <em>The +:date+ "virtual search key" generates search keys using
+    #   +SENTBEFORE+, +SENTON+, and +SENTSINCE+.</em>
+    #
+    # +:savedate+::
+    #   <tt>{savedate: dates}</tt> matches messages whose save date is
+    #   any of the specified dates.  _dates_ should be an array of dates and
+    #   ranges of dates.
+    #
+    #   <em>The +:savedate+ "virtual search key" generates search keys using
+    #   +SAVEDBEFORE+, +SAVEDON+, and +SAVEDSINCE+, which all
+    #   require the +SAVEDATE+ extension</em>.
+    #   {[RFC8514]}[https://www.rfc-editor.org/rfc/rfc8514.html#section-4.3]
     #
     class Search
       autoload :Key,               "#{__dir__}/search/key"
