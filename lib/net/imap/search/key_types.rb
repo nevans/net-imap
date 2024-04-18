@@ -13,7 +13,7 @@ module Net
           key_name = Types::SearchKeyName[const_name].to_sym.downcase
           key_type = new(key_name, types, &)
           const_set const_name, key_type
-          @registry[key_type.key] = key_type
+          @registry[key_type.hash_key] = key_type
         end
 
         def self.new(key_name, types = {}, &block)
@@ -29,7 +29,7 @@ module Net
 
         def self.named(key_name)
           Module.new do
-            define_method(:key) { key_name }
+            define_method(:hash_key) { key_name }
           end
         end
 
@@ -41,7 +41,7 @@ module Net
 
             const_set(:ClassMethods, Module.new do
               def member_types     = self::MemberTypes::TYPES
-              def member_type(key) = member_types.fetch(key)
+              def member_type(hash_key) = member_types.fetch(hash_key)
 
               def coerce(**kwargs)
                 kwargs.to_h {|key, value| [key, member_type(key)[value]] }
@@ -79,7 +79,7 @@ module Net
         search_key :Unkeyword,    Types::FlagKeyword
 
         search_key :Seq, SequenceSet do
-          def name = key
+          def imap_name = nil
         end
 
         search_key :UID,          SequenceSet
@@ -160,11 +160,11 @@ module Net
             new(keys:)
           end
 
-          def name = key
+          def imap_name = nil
 
           def deconstruct = keys.deconstruct
-          def args        = [keys.flat_map(&:to_a)]
-          def value       = merged_value.then { (_1 in [hash]) ? hash : _1 }
+          def imap_args   = [keys.flat_map(&:to_a)]
+          def hash_value  = merged_value.then { (_1 in [hash]) ? hash : _1 }
 
           private
 
@@ -200,10 +200,10 @@ module Net
             end
           end
 
-          def to_a  = [name, *key1, *key2]
-          def value = [key1, key2].map { inner_to_h _1 }
+          def imap_args  = [*key1, *key2]
+          def hash_value = [key1, key2].map { inner_to_h _1 }
 
-          # def value
+          # def hash_value
           #   val1, val2 = key1.to_h, key2.to_h
           #   if val1.length == 1 && val2.length == 1 && val1.keys != val2.keys
           #     val1.merge(val2)
@@ -215,7 +215,7 @@ module Net
           private
 
           def inner_to_h(inner_key)
-            inner_key.is_a?(And) ? inner_key.value : inner_key.to_h
+            inner_key.is_a?(And) ? inner_key.hash_value : inner_key.to_h
           end
 
         end
@@ -229,7 +229,10 @@ module Net
             (args in name, *rest) ? super(name, rest, **kwargs) : super
           end
 
-          def key = name
+          alias imap_name name
+          alias imap_args args
+
+          def hash_key = imap_name
           def deconstruct = super.flatten
         end
 
