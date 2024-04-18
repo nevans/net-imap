@@ -8,6 +8,7 @@ module Net
         def self.[](key)
           case key
           when Key                    then key
+          when KeyList                then key.to_key
           when SequenceSet::Coercible then KeyTypes::Seq[key]
           when String, Symbol         then KeyTypes[key.downcase.to_sym][]
           when Array                  then KeyTypes::And[*key]
