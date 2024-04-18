@@ -137,7 +137,7 @@ module Net
     # Searching message headers:
     # +HEADER+::
     #   <tt>{header: {field => substring}}</tt> matches messages with the
-    #   specified header field containg the specified substring.
+    #   specified header field containing the specified substring.
     #
     # === Full text searches
     # Full text searches _may_ use flexible matching---rather than simple
@@ -253,12 +253,23 @@ module Net
     # === Modification sequence
     #
     # +MODSEQ+::
-    #   * TODO: MODSEQ mod-sequence-valzer
-    #   * TODO: MODSEQ entry-name entry-type-req mod-sequence-valzer
+    #   <tt>{modseq: mod_sequence}</tt> matches messages that have
+    #   modification values that are equal to or greater than
+    #   +mod_sequence+.
+    #
+    #   <tt>{modseq: {entry_name => {entry_type_req => mod_sequence}}}</tt>
+    #   matches messages that contain specific metadata items which have been
+    #   updated since +mod_sequence+.
+    #
+    #   <em>Requires the +CONDSTORE+ extension</em>.
+    #   {[RFC7162]}[https://www.rfc-editor.org/rfc/rfc7162.html].
     #
     # === Annotations
     #
-    # * TODO: ANNOTATION entry-match att-search value
+    #   <tt>{annotation: {entry_match => {att_search => value}}}</tt>
+    #
+    #   <em>Requires the annotations (+ANNOTATE-EXPERIMENT-1+) extension</em>.
+    #   {[RFC5257]}[https://www.rfc-editor.org/rfc/rfc5257.html].
     #
     class Search
       autoload :Key,               "#{__dir__}/search/key"
