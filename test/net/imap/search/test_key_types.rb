@@ -10,7 +10,7 @@ class SearchKeyTypesTests < Test::Unit::TestCase
 
   include Search::KeyTypes
 
-  # TODO: Add :and, OR, NOT, FUZZY
+  # TODO: Add NOT, FUZZY
   # TODO: Add :any?, :all?
 
   input = [1, 3..5, 33, -1]
@@ -274,6 +274,30 @@ class SearchKeyTypesTests < Test::Unit::TestCase
     type: Annotation, input: ["/comment", "value", "IMAP4"],
     to_a: %w[ANNOTATION /comment value IMAP4],
     to_h: {annotation: {"/comment" => {"value" => "IMAP4"}}},
+  }, keep: true
+
+  data "NOT (simple nullary search-key)", {
+    type: Not,
+    input: ["56:78,*"],
+    deconstruct: [Seq[SequenceSet["56:78,*"]]],
+    to_a: ["NOT", SequenceSet["56:78,*"]],
+    to_h: {not: {seq: SequenceSet["56:78,*"]}},
+  }, keep: true
+
+  data "NOT (array of keys)", {
+    type: Not,
+    input: [[:seen, "56:78,*", {subject: "foo"}]],
+    deconstruct: [And[Seen[], Seq[SequenceSet["56:78,*"]], Subject["foo"]]],
+    to_a: ["NOT", ["SEEN", SequenceSet["56:78,*"], "SUBJECT", "foo"]],
+    to_h: {not: {seen: true, seq: SequenceSet["56:78,*"], subject: "foo"}},
+  }, keep: true
+
+  data "NOT (hash of keys)", {
+    type: Not,
+    input: [{seen: true, seq: SequenceSet["56:78,*"], subject: "foo"}],
+    deconstruct: [And[Seen[], Seq[SequenceSet["56:78,*"]], Subject["foo"]]],
+    to_a: ["NOT", ["SEEN", SequenceSet["56:78,*"], "SUBJECT", "foo"]],
+    to_h: {not: {seen: true, seq: SequenceSet["56:78,*"], subject: "foo"}},
   }, keep: true
 
   data "And (parenthesized list)", {
