@@ -187,6 +187,19 @@ module Net
           end
         end
 
+        # TODO: DRY recursive keys (OR, NOT, FUZZY)
+        search_key :Not, key: Key do
+          def imap_args  = key.to_a
+          def hash_value = inner_to_h(key)
+
+          private
+
+          def inner_to_h(inner_key)
+            inner_key.is_a?(And) ? inner_key.hash_value : inner_key.to_h
+          end
+        end
+
+        # TODO: DRY recursive keys (OR, NOT, FUZZY)
         search_key :Or, key1: Key, key2: Key do
           def self.[](*args, **kwargs)
             return super if args.empty? || !kwargs.empty?
@@ -202,15 +215,6 @@ module Net
 
           def imap_args  = [*key1, *key2]
           def hash_value = [key1, key2].map { inner_to_h _1 }
-
-          # def hash_value
-          #   val1, val2 = key1.to_h, key2.to_h
-          #   if val1.length == 1 && val2.length == 1 && val1.keys != val2.keys
-          #     val1.merge(val2)
-          #   else
-          #     [val1, val2]
-          #   end
-          # end
 
           private
 

@@ -94,8 +94,6 @@ module Net
 
           # TODO: OR, NOT, FUZZY
           def input_to_key(key, *args)
-            search_key = obsolete_input_to_key(key, *args) and
-              return search_key
             case key
             in Symbol
               KeyTypes.fetch(key)[*args]
@@ -103,13 +101,6 @@ module Net
               KeyTypes::Generic[key, *args]
             else
               raise DataFormatError, "unknown search-key type: %p" % [key]
-            end
-          end
-
-          def obsolete_input_to_key(key, *args)
-            case key
-            when :not    then NotKey.new(*args)
-            when :fuzzy  then FuzzyKey.new(*args)
             end
           end
 
