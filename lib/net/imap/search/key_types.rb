@@ -163,40 +163,31 @@ module Net
           def imap_name = nil
 
           def deconstruct = keys.deconstruct
-          def imap_args   = [keys.flat_map(&:to_a)]
-          def hash_value  = merged_value.then { (_1 in [hash]) ? hash : _1 }
+          def imap_args   = [super]
+
+          def hash_value
+            keys
+              .map(&:to_h)
+              .reduce([{}]) {|ary, hash| merge_value(ary, hash) }
+              .then { _1.length == 1 ? _1.first : _1 }
+          end
 
           private
 
-          def merged_value = merge_array array_value
-          def array_value = keys.map(&:to_h)
-
-          def merge_array(array_value)
-            array_value.each_with_object([{}]) do |hash, ary|
-              merge_value(ary, hash)
-            end
-          end
-
           def merge_value(ary, hash)
             last = ary.last
-            if hash.size == 1 && (key, * = hash.first) && !last.key?(key)
-              last.update(hash)
+            if hash.size == 1 && (key, val = hash.first) && !last.key?(key)
+              last[key] = val
             else
               ary << hash
             end
+            ary
           end
         end
 
         # TODO: DRY recursive keys (OR, NOT, FUZZY)
         search_key :Not, key: Key do
-          def imap_args  = key.to_a
           def hash_value = inner_to_h(key)
-
-          private
-
-          def inner_to_h(inner_key)
-            inner_key.is_a?(And) ? inner_key.hash_value : inner_key.to_h
-          end
         end
 
         # TODO: DRY recursive keys (OR, NOT, FUZZY)
@@ -213,14 +204,7 @@ module Net
             end
           end
 
-          def imap_args  = [*key1, *key2]
           def hash_value = [key1, key2].map { inner_to_h _1 }
-
-          private
-
-          def inner_to_h(inner_key)
-            inner_key.is_a?(And) ? inner_key.hash_value : inner_key.to_h
-          end
 
         end
 
@@ -234,10 +218,9 @@ module Net
           end
 
           alias imap_name name
-          alias imap_args args
+          alias hash_key  name
 
-          def hash_key = imap_name
-          def deconstruct = super.flatten
+          def deconstruct = [name, *args]
         end
 
         # See https://developers.google.com/gmail/imap/imap-extensions#extension_of_the_search_command_x-gm-raw
