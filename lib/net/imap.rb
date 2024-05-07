@@ -1930,7 +1930,7 @@ module Net
     end
 
     # :call-seq:
-    #   search(criteria, charset = nil) -> result
+    #   search(criteria, charset = nil, esearch: false) -> result
     #
     # Sends a {SEARCH command [IMAP4rev1 §6.4.4]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.4]
     # to search the mailbox for messages that match the given search +criteria+,
@@ -1972,6 +1972,11 @@ module Net
     # _NOTE:_ Return options and +charset+ may be sent as part of +criteria+.
     # Do not use the +charset+ argument when either return options or charset
     # are embedded in +criteria+.
+    #
+    # +esearch+ controls the return type when the server does not return any
+    # search results.  If +esearch+ is +true+ or +criteria+ begins with
+    # +RETURN+, an empty ESearchResult will be returned.  When +esearch+ is
+    # +false+, an empty SearchResult will be returned.
     #
     # Related: #uid_search
     #
@@ -3145,12 +3150,24 @@ module Net
       end
     end
 
-    def search_internal(cmd, keys, charset = nil)
+    def search_internal(cmd, keys, charset = nil, esearch: false)
       keys = normalize_searching_criteria(keys)
       args = charset ? ["CHARSET", charset, *keys] : keys
       synchronize do
-        send_command(cmd, *args)
-        clear_responses("SEARCH").last || []
+        clear_responses("SEARCH")
+        result = nil
+        send_command(cmd, *args) do |response, tag|
+          if response in data: ESearchResult(tag: ^tag) => result
+            responses("ESEARCH") { _1.delete(result) }
+          end
+        end
+        if result
+          result
+        elsif esearch || keys in RawData[/\ARETURN /] | Array[/\ARETURN\z/i, *]
+          ESearchResult.new
+        else
+          clear_responses("SEARCH").last || []
+        end
       end
     end
 
