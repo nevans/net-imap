@@ -1930,7 +1930,7 @@ module Net
     end
 
     # :call-seq:
-    #   search(criteria, charset = nil) -> result
+    #   search(criteria, charset = nil, esearch: false) -> result
     #
     # Sends a {SEARCH command [IMAP4rev1 §6.4.4]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.4]
     # to search the mailbox for messages that match the given search +criteria+,
@@ -1972,6 +1972,11 @@ module Net
     # _NOTE:_ Return options and +charset+ may be sent as part of +criteria+.
     # Do not use the +charset+ argument when either return options or charset
     # are embedded in +criteria+.
+    #
+    # +esearch+ controls the return type when the server does not return any
+    # search results.  If +esearch+ is +true+ or +criteria+ begins with
+    # +RETURN+, an empty ESearchResult will be returned.  When +esearch+ is
+    # +false+, an empty SearchResult will be returned.
     #
     # Related: #uid_search
     #
@@ -3146,12 +3151,35 @@ module Net
       end
     end
 
-    def search_internal(cmd, keys, charset = nil)
+    HasSearchReturnOpts = ->keys {
+      keys in RawData[/\ARETURN /] | Array[/\ARETURN\z/i, *]
+    }
+    private_constant :HasSearchReturnOpts
+
+    def search_internal(cmd, keys, charset = nil, esearch: nil)
       keys = normalize_searching_criteria(keys)
       args = charset ? ["CHARSET", charset, *keys] : keys
+      # TODO: check if certain extensions are enabled
+      esearch = (keys in HasSearchReturnOpts) if esearch.nil?
       synchronize do
-        send_command(cmd, *args)
-        clear_responses("SEARCH").last || []
+        tagged = send_command(cmd, *args)
+        tag    = tagged.tag
+        # Only the last ESEARCH or SEARCH is used.  Excess results are ignored.
+        esearch_result = extract_responses("ESEARCH") {|response|
+          response in ESearchResult(tag: ^tag)
+        }.last
+        search_result = clear_responses("SEARCH").last
+        if esearch_result
+          esearch_result # silently ignore SEARCH results
+        elsif search_result
+          # TODO: warn if ESEARCH result was expected, i.e: buggy server?
+          # warn EXPECTED_ESEARCH_RESULT if esearch
+          search_result
+        elsif esearch
+          ESearchResult[tag:, uid: cmd == "UID SEARCH"]
+        else
+          SearchResult[]
+        end
       end
     end
 
