@@ -773,11 +773,18 @@ module Net
     # Net::IMAP.config.
     attr_reader :config
 
+    # >>>
+    #   *DEPRECATED:* Use {config.open_timeout}[rdoc-ref:Config#open_timeout].
+    #
     # Seconds to wait until a connection is opened.
     # If the IMAP object cannot open a connection within this time,
     # it raises a Net::OpenTimeout exception. The default value is 30 seconds.
     def open_timeout; config.open_timeout end
 
+    # >>>
+    #   *DEPRECATED:* Use
+    #   {config.idle_response_timeout}[rdoc-ref:Config#idle_response_timeout].
+    #
     # Seconds to wait until an IDLE response is received.
     def idle_response_timeout; config.idle_response_timeout end
 
