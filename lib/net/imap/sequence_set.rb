@@ -1265,6 +1265,18 @@ module Net
         end
       end
 
+      # For YAML serialization
+      def encode_with(coder) # :nodoc:
+        # we can reconstruct from the string
+        coder['atom'] = to_s
+      end
+
+      # For YAML deserialization
+      def init_with(coder) # :nodoc:
+        @tuples = []
+        self.atom = coder['atom']
+      end
+
       def input_to_tuples(obj)
         obj = input_try_convert obj
         case obj
