@@ -2476,7 +2476,7 @@ module Net
     end
 
     # :call-seq:
-    #   uid_fetch(set, attr, changedsince: nil, partial: nil) -> array of FetchData (or UIDFetchData)
+    #   uid_fetch(set, attr, changedsince: nil, partial: nil, vanished: nil) -> array of FetchData (or UIDFetchData)
     #
     # Sends a {UID FETCH command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
     # to retrieve data associated with a message in the mailbox.
@@ -2492,6 +2492,10 @@ module Net
     #   whether a +UID+ was specified as a message data item to the +FETCH+.
     #
     # +changedsince+ (optional) behaves the same as with #fetch.
+    #
+    # +vanished+ is an optional ... TODO: describe +vanished+.
+    # <em>The +QRESYNC+ capabability must be enabled.</em>
+    # {[RFC7162]}[https://rfc-editor.org/rfc/rfc7162]
     #
     # +partial+ is an optional range to limit the number of results returned.
     # It's useful when +set+ contains an unknown number of messages.
@@ -2523,6 +2527,9 @@ module Net
     # Related: #fetch, FetchData
     #
     # ==== Capabilities
+    #
+    # QRESYNC[https://tools.ietf.org/html/rfc7162] must be enabled in order to
+    # use the +vanished+ fetch modifier.
     #
     # The server's capabilities must include +PARTIAL+
     # {[RFC9394]}[https://rfc-editor.org/rfc/rfc9394] in order to use the
