@@ -2947,6 +2947,10 @@ module Net
     #   command parameters defined by the extension will implicitly enable it.
     #   See {[RFC7162 §3.1]}[https://www.rfc-editor.org/rfc/rfc7162.html#section-3.1].
     #
+    # [+QRESYNC+ {[RFC7162]}[https://www.rfc-editor.org/rfc/rfc7162.html]]
+    #
+    # TODO: doc this
+    #
     # [+:utf8+ --- an alias for <tt>"UTF8=ACCEPT"</tt>]
     #
     #   In a future release, <tt>enable(:utf8)</tt> will enable either
