@@ -2088,6 +2088,10 @@ module Net
     # {[RFC7162]}[https://tools.ietf.org/html/rfc7162] in order to use the
     # +changedsince+ argument.  Using +changedsince+ implicitly enables the
     # +CONDSTORE+ extension.
+    #
+    # When QRESYNC[https://tools.ietf.org/html/rfc7162] is enabled, the
+    # +vanished+ fetch modifier is _not_ allowed.  The +vanished+ modifier can
+    # only be used with #uid_fetch.
     def fetch(set, attr, mod = nil, changedsince: nil)
       fetch_internal("FETCH", set, attr, mod, changedsince: changedsince)
     end
@@ -2109,7 +2113,11 @@ module Net
     # Related: #fetch, FetchData
     #
     # ===== Capabilities
-    # Same as #fetch.
+    #
+    # When QRESYNC[https://tools.ietf.org/html/rfc7162] is enabled, the
+    # +vanished+ fetch modifier may be used.  TODO: describe +vanished+.
+    #
+    # Otherwise, #uid_store is updated by extensions in the same way as #store.
     def uid_fetch(set, attr, mod = nil, changedsince: nil)
       fetch_internal("UID FETCH", set, attr, mod, changedsince: changedsince)
     end
