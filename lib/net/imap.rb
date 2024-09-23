@@ -1427,6 +1427,11 @@ module Net
     # the +condstore+ keyword parameter may be used.
     #   imap.select("mbox", condstore: true)
     #   modseq = imap.responses("HIGHESTMODSEQ", &:last)
+    #
+    # If [QRESYNC[https://www.rfc-editor.org/rfc/rfc7162.html]] is supported,
+    # TODO: the +qresync+ keyword parameter may be used.
+    #   imap.select("mbox", qresync: TODO)
+    #   TODO
     def select(mailbox, condstore: false)
       args = ["SELECT", mailbox]
       args << ["CONDSTORE"] if condstore
