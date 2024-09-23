@@ -2436,6 +2436,10 @@ module Net
     # {[RFC7162]}[https://tools.ietf.org/html/rfc7162] in order to use the
     # +changedsince+ argument.  Using +changedsince+ implicitly enables the
     # +CONDSTORE+ extension.
+    #
+    # When QRESYNC[https://tools.ietf.org/html/rfc7162] is enabled, the
+    # +vanished+ fetch modifier is _not_ allowed.  The +vanished+ modifier can
+    # only be used with #uid_fetch.
     def fetch(...)
       fetch_internal("FETCH", ...)
     end
@@ -2489,11 +2493,14 @@ module Net
     #
     # ==== Capabilities
     #
+    # When QRESYNC[https://tools.ietf.org/html/rfc7162] is enabled, the
+    # +vanished+ fetch modifier may be used.  TODO: describe +vanished+.
+    #
     # The server's capabilities must include +PARTIAL+
     # {[RFC9394]}[https://rfc-editor.org/rfc/rfc9394] in order to use the
     # +partial+ argument.
     #
-    # Otherwise, the same as #fetch.
+    # Otherwise, #uid_fetch is updated by extensions in the same way as #fetch.
     def uid_fetch(...)
       fetch_internal("UID FETCH", ...)
     end
