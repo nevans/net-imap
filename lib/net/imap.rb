@@ -526,6 +526,20 @@ module Net
   # - Updates #store and #uid_store with the +unchangedsince+ modifier and adds
   #   the +MODIFIED+ ResponseCode to the tagged response.
   #
+  # ==== RFC7162: +QRESYNC+
+  # - All protocol changes and requirements specified for the +CONDSTORE+
+  #   extension are also a part of the +QRESYNC+ extension.
+  # - Updates #enable with +QRESYNC+ parameter.  +QRESYNC+ _must_ be explicitly
+  #   enabled before using any of the extension's command parameters, listed
+  #   below.  Enabling +QRESYNC+ implicitly enables +CONDSTORE+ as well.
+  # - Updates #select and #examine with the +qresync+ parameter, which may add
+  #   VanishedData with <tt>#earlier? => true</tt> to the responses.
+  # - Updates #uid_fetch with the +vanished+ modifier, which may add a
+  #   VanishedData with <tt>#earlier? => true</tt> to the responses, before
+  #   any FetchData.
+  # - Updates #expunge and #uid_expunge to return a VanishedData response.
+  # - Replaces all +EXPUNGE+ responses with +VANISHED+ responses (VanishedData).
+  #
   # ==== RFC8438: <tt>STATUS=SIZE</tt>
   # - Updates #status with the +SIZE+ status attribute.
   #
