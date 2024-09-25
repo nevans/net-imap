@@ -3213,12 +3213,14 @@ module Net
 
       synchronize do
         clear_responses("FETCH")
+        clear_responses("UIDFETCH")
         if mod
           send_command(cmd, SequenceSet.new(set), attr, mod)
         else
           send_command(cmd, SequenceSet.new(set), attr)
         end
-        clear_responses("FETCH")
+        uidfetches = clear_responses("UIDFETCH")
+        uidfetches.any? ? uidfetches : clear_responses("FETCH")
       end
     end
 
