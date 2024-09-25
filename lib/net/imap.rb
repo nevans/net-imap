@@ -3437,8 +3437,10 @@ module Net
       args << attr << flags
       synchronize do
         clear_responses("FETCH")
+        clear_responses("UIDFETCH")
         send_command(cmd, *args)
-        clear_responses("FETCH")
+        uidfetches = clear_responses("UIDFETCH")
+        uidfetches.any? ? uidfetches : clear_responses("FETCH")
       end
     end
 
