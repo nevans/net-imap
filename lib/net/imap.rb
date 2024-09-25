@@ -1603,7 +1603,7 @@ module Net
     #
     # ==== Capabilities
     #
-    # The server's capabilities must include +NAMESPACE+
+    # The server's capabilities must include either +IMAP4rev2+ or +NAMESPACE+
     # [RFC2342[https://tools.ietf.org/html/rfc2342]].
     def namespace
       synchronize do
@@ -1904,7 +1904,7 @@ module Net
     #
     # ==== Capabilities
     #
-    # The server's capabilities must include +UNSELECT+
+    # The server's capabilities must include either +IMAP4rev2+ or +UNSELECT+
     # [RFC3691[https://tools.ietf.org/html/rfc3691]].
     def unselect
       send_command("UNSELECT")
@@ -2592,7 +2592,7 @@ module Net
     #
     # ==== Capabilities
     #
-    # The server's capabilities must include +MOVE+
+    # The server's capabilities must include either +IMAP4rev2+ or +MOVE+
     # [RFC6851[https://tools.ietf.org/html/rfc6851]].
     #
     # If +UIDPLUS+ [RFC4315[https://www.rfc-editor.org/rfc/rfc4315.html]] is
@@ -2616,9 +2616,10 @@ module Net
     #
     # ==== Capabilities
     #
-    # Same as #move: The server's capabilities must include +MOVE+
-    # [RFC6851[https://tools.ietf.org/html/rfc6851]].  +UIDPLUS+ also affects
-    # #uid_move the same way it affects #move.
+    # The server's capabilities must include either +IMAP4rev2+ or +MOVE+
+    # [RFC6851[https://tools.ietf.org/html/rfc6851]].
+    #
+    # +UIDPLUS+ affects #uid_move the same way it affects #move.
     def uid_move(set, mailbox)
       copy_internal("UID MOVE", set, mailbox)
     end
@@ -2822,7 +2823,7 @@ module Net
     #
     # ==== Capabilities
     #
-    # The server's capabilities must include +IDLE+
+    # The server's capabilities must include either +IMAP4rev2+ or +IDLE+
     # [RFC2177[https://tools.ietf.org/html/rfc2177]].
     def idle(timeout = nil, &response_handler)
       raise LocalJumpError, "no block given" unless response_handler
