@@ -530,6 +530,12 @@ module Net
   #   See FetchData#emailid and FetchData#emailid.
   # - Updates #status with support for the +MAILBOXID+ status attribute.
   #
+  # ==== RFC9586: +UIDONLY+
+  # - Updates #enable with +UIDONLY+ parameter.
+  # - Updates #uid_fetch and #uid_store to return +UIDFETCH+ response.
+  # - Updates #expunge and #uid_expunge to return +VANISHED+ response.
+  # - Prohibits use of message sequence numbers in responses or requests.
+  #
   # == References
   #
   # [{IMAP4rev1}[https://www.rfc-editor.org/rfc/rfc3501.html]]::
@@ -697,6 +703,11 @@ module Net
   #   Gondwana, B., Ed., "IMAP Extension for Object Identifiers",
   #   RFC 8474, DOI 10.17487/RFC8474, September 2018,
   #   <https://www.rfc-editor.org/info/rfc8474>.
+  # [UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.pdf]]::
+  #   Melnikov, A., Achuthan, A., Nagulakonda, V., Singh, A., and L. Alves,
+  #   "\IMAP Extension for Using and Returning Unique Identifiers (UIDs) Only",
+  #   RFC 9586, DOI 10.17487/RFC9586, May 2024,
+  #   <https://www.rfc-editor.org/info/rfc9586>.
   #
   # === IANA registries
   # * {IMAP Capabilities}[http://www.iana.org/assignments/imap4-capabilities]
@@ -1905,18 +1916,39 @@ module Net
       send_command("UNSELECT")
     end
 
+    # call-seq:
+    #   expunge -> array of message sequence numbers
+    #   expunge -> VanishedData of UIDs
+    #
     # Sends an {EXPUNGE command [IMAP4rev1 §6.4.3]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.3]
-    # Sends a EXPUNGE command to permanently remove from the currently
-    # selected mailbox all messages that have the \Deleted flag set.
+    # to permanently remove all messages with the +\Deleted+ flag from the
+    # currently selected mailbox.
     #
     # Related: #uid_expunge
+    #
+    # ===== Capabilities
+    #
+    # When either QRESYNC[https://tools.ietf.org/html/rfc7162] or
+    # UIDONLY[https://tools.ietf.org/html/rfc9586] are enabled, #expunge
+    # returns VanishedData, which contains UIDs---<em>not message sequence
+    # numbers</em>.
+    #
+    # *NOTE:* Any unhandled +VANISHED+ #responses without the +EARLIER+ modifier
+    # will be merged into the VanishedData and deleted from #responses.  This is
+    # consistent with how Net::IMAP handles +EXPUNGE+ responses.  Unhandled
+    # <tt>VANISHED (EARLIER)</tt> responses will _not_ be merged or returned.
+    #
+    # *NOTE:* When no messages are expunged, Net::IMAP currently returns an
+    # empty array, regardless of which extensions have been enabled.  In the
+    # future, an empty VanishedData will be returned instead.
     def expunge
-      synchronize do
-        send_command("EXPUNGE")
-        clear_responses("EXPUNGE")
-      end
+      expunge_internal("EXPUNGE")
     end
 
+    # call-seq:
+    #   uid_expunge -> array of message sequence numbers
+    #   uid_expunge -> VanishedData of UIDs
+    #
     # Sends a {UID EXPUNGE command [RFC4315 §2.1]}[https://www.rfc-editor.org/rfc/rfc4315#section-2.1]
     # {[IMAP4rev2 §6.4.9]}[https://www.rfc-editor.org/rfc/rfc9051#section-6.4.9]
     # to permanently remove all messages that have both the <tt>\\Deleted</tt>
@@ -1940,13 +1972,13 @@ module Net
     #
     # ===== Capabilities
     #
-    # The server's capabilities must include +UIDPLUS+
+    # The server's capabilities must include either +IMAP4rev2+ or +UIDPLUS+
     # [RFC4315[https://www.rfc-editor.org/rfc/rfc4315.html]].
+    #
+    # Otherwise, #uid_expunge is updated by extensions in the same way as
+    # #expunge.
     def uid_expunge(uid_set)
-      synchronize do
-        send_command("UID EXPUNGE", SequenceSet.new(uid_set))
-        clear_responses("EXPUNGE")
-      end
+      expunge_internal("UID EXPUNGE", SequenceSet.new(uid_set))
     end
 
     # :call-seq:
@@ -2041,6 +2073,10 @@ module Net
     #   result = imap.search(["SUBJECT", "hi there", "not", "new"])
     #   #=> Net::IMAP::SearchResult[1, 6, 7, 8, modseq: 5594]
     #   result.modseq # => 5594
+    #
+    # The +SEARCH+ command is prohibited when
+    # UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been enabled.
+    # Use #uid_search instead.
     def search(...)
       search_internal("SEARCH", ...)
     end
@@ -2054,6 +2090,15 @@ module Net
     # capability has been enabled.
     #
     # See #search for documentation of search criteria.
+    #
+    # ===== Capabilities
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] is enabled, the
+    # <tt><message set></tt> search criterion is prohibited.  Use +ALL+ or
+    # <tt>UID sequence-set</tt> instead.
+    #
+    # Otherwise, #uid_search is updated by extensions in the same way as
+    # #search.
     def uid_search(...)
       search_internal("UID SEARCH", ...)
     end
@@ -2110,12 +2155,15 @@ module Net
     # {[RFC7162]}[https://tools.ietf.org/html/rfc7162] in order to use the
     # +changedsince+ argument.  Using +changedsince+ implicitly enables the
     # +CONDSTORE+ extension.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] is enabled, the
+    # +FETCH+ command is prohibited.  Use #uid_fetch instead.
     def fetch(set, attr, mod = nil, changedsince: nil)
       fetch_internal("FETCH", set, attr, mod, changedsince: changedsince)
     end
 
     # :call-seq:
-    #   uid_fetch(set, attr, changedsince: nil) -> array of FetchData
+    #   uid_fetch(set, attr, changedsince: nil) -> array of FetchData (or UIDFetchData)
     #
     # Sends a {UID FETCH command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
     # to retrieve data associated with a message in the mailbox.
@@ -2131,7 +2179,12 @@ module Net
     # Related: #fetch, FetchData
     #
     # ===== Capabilities
-    # Same as #fetch.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been
+    # enabled, #uid_fetch must be used instead of #fetch, and UIDFetchData will
+    # be returned instead of FetchData.
+    #
+    # Otherwise, #uid_store is updated by extensions in the same way as #store.
     def uid_fetch(set, attr, mod = nil, changedsince: nil)
       fetch_internal("UID FETCH", set, attr, mod, changedsince: changedsince)
     end
@@ -2179,12 +2232,16 @@ module Net
     # {[RFC7162]}[https://tools.ietf.org/html/rfc7162] in order to use the
     # +unchangedsince+ argument.  Using +unchangedsince+ implicitly enables the
     # +CONDSTORE+ extension.
+    #
+    # The +STORE+ command is prohibited when
+    # UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been enabled.
+    # Use #uid_store instead.
     def store(set, attr, flags, unchangedsince: nil)
       store_internal("STORE", set, attr, flags, unchangedsince: unchangedsince)
     end
 
     # :call-seq:
-    #   uid_store(set, attr, value, unchangedsince: nil) -> array of FetchData
+    #   uid_store(set, attr, value, unchangedsince: nil) -> array of FetchData (or UIDFetchData)
     #
     # Sends a {UID STORE command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
     # to alter data associated with messages in the mailbox, in particular their
@@ -2196,7 +2253,12 @@ module Net
     # Related: #store
     #
     # ===== Capabilities
-    # Same as #store.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been
+    # enabled, #uid_store must be used instead of #store, and UIDFetchData will
+    # be returned instead of FetchData.
+    #
+    # Otherwise, #uid_store is updated by extensions in the same way as #store.
     def uid_store(set, attr, flags, unchangedsince: nil)
       store_internal("UID STORE", set, attr, flags, unchangedsince: unchangedsince)
     end
@@ -2215,6 +2277,9 @@ module Net
     # with UIDPlusData.  This will report the UIDVALIDITY of the destination
     # mailbox, the UID set of the source messages, and the assigned UID set of
     # the moved messages.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] is enabled, the
+    # +COPY+ command is prohibited.  Use #uid_copy instead.
     def copy(set, mailbox)
       copy_internal("COPY", set, mailbox)
     end
@@ -2227,7 +2292,10 @@ module Net
     #
     # ===== Capabilities
     #
-    # +UIDPLUS+ affects #uid_copy the same way it affects #copy.
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been
+    # enabled, #uid_copy must be used instead of #copy.
+    #
+    # Otherwise, #uid_copy is updated by extensions in the same way as #copy.
     def uid_copy(set, mailbox)
       copy_internal("UID COPY", set, mailbox)
     end
@@ -2251,6 +2319,8 @@ module Net
     # mailbox, the UID set of the source messages, and the assigned UID set of
     # the moved messages.
     #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] is enabled, the
+    # +MOVE+ command is prohibited.  Use #uid_move instead.
     def move(set, mailbox)
       copy_internal("MOVE", set, mailbox)
     end
@@ -2266,9 +2336,13 @@ module Net
     #
     # ===== Capabilities
     #
-    # Same as #move: The server's capabilities must include +MOVE+
-    # [RFC6851[https://tools.ietf.org/html/rfc6851]].  +UIDPLUS+ also affects
-    # #uid_move the same way it affects #move.
+    # The server's capabilities must include either +IMAP4rev2+ or +MOVE+
+    # [RFC6851[https://tools.ietf.org/html/rfc6851]].
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been
+    # enabled, #uid_move must be used instead of #move.
+    #
+    # Otherwise, #uid_move is updated by extensions in the same way as #move.
     def uid_move(set, mailbox)
       copy_internal("UID MOVE", set, mailbox)
     end
@@ -2412,6 +2486,16 @@ module Net
     #   the client <tt>enable("UTF8=ACCEPT")</tt> before any mailboxes may be
     #   selected.  For convenience, <tt>enable("UTF8=ONLY")</tt> is aliased to
     #   <tt>enable("UTF8=ACCEPT")</tt>.
+    #
+    # [+UIDONLY+ {[RFC9586]}[https://www.rfc-editor.org/rfc/rfc9586.pdf]]
+    #
+    #   When UIDONLY is enabled, the #fetch, #store, #search, #copy, and #move
+    #   commands are prohibited and result in a tagged BAD response. Clients
+    #   should instead use uid_fetch, uid_store, uid_search, uid_copy, or
+    #   uid_move, respectively. All +FETCH+ responses that would be returned are
+    #   replaced by +UIDFETCH+ responses. All +EXPUNGED+ responses that would be
+    #   returned are replaced by +VANISHED+ responses. The "<sequence set>"
+    #   uid_search criterion is prohibited.
     #
     # ===== Unsupported capabilities
     #
@@ -2922,6 +3006,21 @@ module Net
       end
     end
 
+    def expunge_internal(...)
+      synchronize do
+        send_command(...)
+        vanished_array = extract_responses("VANISHED") { !_1.earlier? }
+        if vanished_array.empty?
+          clear_responses("EXPUNGE")
+        elsif vanished_array.length == 1
+          vanished_array.first
+        else
+          merged_uids = SequenceSet[*vanished_array.map(&:uids)]
+          VanishedData[uids: merged_uids, earlier: false]
+        end
+      end
+    end
+
     def search_internal(cmd, keys, charset = nil, esearch: false)
       keys = normalize_searching_criteria(keys)
       args = charset ? ["CHARSET", charset, *keys] : keys
@@ -2958,12 +3057,13 @@ module Net
 
       synchronize do
         clear_responses("FETCH")
+        clear_responses("UIDFETCH")
         if mod
           send_command(cmd, SequenceSet.new(set), attr, mod)
         else
           send_command(cmd, SequenceSet.new(set), attr)
         end
-        clear_responses("FETCH")
+        clear_fetch_responses
       end
     end
 
@@ -2974,9 +3074,15 @@ module Net
       args << attr << flags
       synchronize do
         clear_responses("FETCH")
+        clear_responses("UIDFETCH")
         send_command(cmd, *args)
-        clear_responses("FETCH")
+        clear_fetch_responses
       end
+    end
+
+    def clear_fetch_responses
+      uidfetches = clear_responses("UIDFETCH")
+      uidfetches.any? ? uidfetches : clear_responses("FETCH")
     end
 
     def copy_internal(cmd, set, mailbox)
