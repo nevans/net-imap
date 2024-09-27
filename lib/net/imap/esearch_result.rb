@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "data_lite"
-
 module Net
   class IMAP
     # An Extended search result which is returned by IMAP#search,
