@@ -12,12 +12,9 @@ module Net
     # * The server supports +IMAP4rev2+ but _not_ +IMAP4rev1+.
     # * +IMAP4rev2+ has been enabled.
     #
-    class ESearchResult < DataLite
-      def self.members; %i[tag uid data].freeze end
-
+    class ESearchResult < Data.define(:tag, :uid, :data)
       def initialize(tag: nil, uid: nil, data: nil)
-        @tag, @uid, @data = tag, uid, data
-        freeze
+        super
       end
 
       # :call-seq: to_a -> Array of integers
@@ -34,22 +31,27 @@ module Net
       # returning +SEARCH+ or +ESEARCH+ data.
       def to_a = all&.numbers || []
 
+      ##
+      # method: tag
       # :call-seq: tag -> string or nil
       #
       # The tag of the command that caused the response to be returned.
       #
       # If it is missing, then the response was not caused by a particular IMAP
       # command.
-      attr_reader :tag
 
+      ##
+      # method: uid
       # :call-seq: uid -> boolean
       #
       # When true, all #data in the +ESEARCH+ response refers to UIDs;
       # otherwise, all returned #data refers to message sequence numbers.
-      attr_reader :uid
+
       alias uid? uid
 
-      # method: data :call-seq: data -> array of [name, value] pairs
+      ##
+      # method: data
+      # :call-seq: data -> array of [name, value] pairs
       #
       # Search return data, which can also be retrieved by #min, #max, #all,
       # #count, #modseq, and other methods.  Most names correspond to an
@@ -57,7 +59,6 @@ module Net
       #
       # Stored as an array of (name, value) pairs rather than as a hash, because
       # extensions may allow the same name to be used more than once per result.
-      attr_reader :data
 
       # :call-seq: min -> integer or nil
       #
@@ -116,13 +117,17 @@ module Net
       # {[RFC7162]}[https://www.rfc-editor.org/rfc/rfc7162.html].
       def modseq;     data.assoc("MODSEQ")&.last     end
 
-      class ContextUpdate < DataLite
-        def self.members; %i[position set].freeze end
+      class ContextUpdate < Data.define(:position, :set)
         def initialize(position: nil, set: nil)
-          @position, @set = position, set
-          freeze
+          super
         end
-        attr_reader :position, :set
+
+        ##
+        # method: position
+
+        ##
+        # method: set
+
       end
 
       class AddToContext < ContextUpdate
@@ -167,18 +172,18 @@ module Net
       # See +PARTIAL+ {[RFC9394]}[https://www.rfc-editor.org/rfc/rfc9394.html]
       # or <tt>CONTEXT=SEARCH</tt>/<tt>CONTEXT=SORT</tt>
       # {[RFC5267]}[https://www.rfc-editor.org/rfc/rfc5267.html]
-      class PartialResult < DataLite
-        def self.members; %i[range results].freeze end
+      class PartialResult < Data.define(:range, :results)
         def initialize(range: nil, results: nil)
-          @range, @results = range, results
-          freeze
+          super
         end
 
+        ##
+        # method: range
         # :call-seq: range -> range
-        attr_reader :range
 
+        ##
+        # method: results
         # :call-seq: results -> sequence set or nil
-        attr_reader :results
       end
 
       # :call-seq: partial -> PartialResult or nil
