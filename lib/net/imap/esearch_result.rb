@@ -14,6 +14,9 @@ module Net
     #
     class ESearchResult < Data.define(:tag, :uid, :data)
       def initialize(tag: nil, uid: nil, data: nil)
+        tag  => String       | nil; tag = -tag if tag
+        uid  => true | false | nil; uid = !!uid
+        data => Array        | nil; data ||= []; data.freeze
         super
       end
 
@@ -118,7 +121,9 @@ module Net
       def modseq;     data.assoc("MODSEQ")&.last     end
 
       class ContextUpdate < Data.define(:position, :set)
-        def initialize(position: nil, set: nil)
+        def initialize(position:, set:)
+          position = NumValidator.ensure_number(position)
+          set => SequenceSet
           super
         end
 
@@ -173,7 +178,9 @@ module Net
       # or <tt>CONTEXT=SEARCH</tt>/<tt>CONTEXT=SORT</tt>
       # {[RFC5267]}[https://www.rfc-editor.org/rfc/rfc5267.html]
       class PartialResult < Data.define(:range, :results)
-        def initialize(range: nil, results: nil)
+        def initialize(range:, results:)
+          range   => Range
+          results => SequenceSet | nil
           super
         end
 
