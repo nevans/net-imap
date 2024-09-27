@@ -32,7 +32,7 @@ module Net
       # Note that +to_a+ is a valid method on every possible return type for
       # IMAP#search, so it can be used to hide the difference between servers
       # returning +SEARCH+ or +ESEARCH+ data.
-      def to_a = all&.numbers || []
+      def to_a;       all&.numbers || [] end
 
       ##
       # method: tag
