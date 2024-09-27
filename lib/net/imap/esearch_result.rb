@@ -195,8 +195,8 @@ module Net
 
       # :call-seq: partial -> PartialResult or nil
       #
-      # Return a subset of the message numbers/UIDs that satisfy the SEARCH
-      # criteria.
+      # Return a PartialResult with a subset of the message numbers/UIDs that
+      # satisfy the SEARCH criteria.
       #
       # See +PARTIAL+ {[RFC9394]}[https://www.rfc-editor.org/rfc/rfc9394.html]
       # or <tt>CONTEXT=SEARCH</tt>/<tt>CONTEXT=SORT</tt>
