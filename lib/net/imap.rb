@@ -3025,6 +3025,7 @@ module Net
       keys = normalize_searching_criteria(keys)
       args = charset ? ["CHARSET", charset, *keys] : keys
       synchronize do
+        clear_responses("SEARCH")
         result = nil
         send_command(cmd, *args) do |response, tag|
           if response in data: ESearchResult(tag: ^tag) => result
