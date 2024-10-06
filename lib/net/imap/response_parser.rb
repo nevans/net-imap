@@ -254,6 +254,11 @@ module Net
         QUOTED_rev1       = /"(#{QUOTED_CHAR_rev1}*)"/n
         QUOTED_rev2       = /"(#{QUOTED_CHAR_rev2}*)"/n
 
+        # charset = atom / quoted
+        CHARSET_rev1      = /#{ATOM}|#{QUOTED_rev1}/
+        CHARSET_rev2      = /#{ATOM}|#{QUOTED_rev2}/
+        CHARSET           = CHARSET_rev2
+
         # RFC3501:
         #   text          = 1*TEXT-CHAR
         # RFC9051:

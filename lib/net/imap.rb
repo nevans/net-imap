@@ -3021,23 +3021,90 @@ module Net
       end
     end
 
-    def search_internal(cmd, keys, charset = nil, esearch: false)
-      keys = normalize_searching_criteria(keys)
-      args = charset ? ["CHARSET", charset, *keys] : keys
+    # NOTE: This won't return the full return opts when ")" is embedded inside a
+    # quoted or literal string.
+    CHAR              = /[\x01-\x7f]/n
+    UTF8_1            = /[\x00-\x7f]/n # aka ASCII 7bit
+    UTF8_TAIL         = /[\x80-\xBF]/n
+    UTF8_2            = /[\xC2-\xDF]#{UTF8_TAIL}/n
+    UTF8_3            = Regexp.union(/\xE0[\xA0-\xBF]#{UTF8_TAIL}/n,
+                                     /\xED[\x80-\x9F]#{UTF8_TAIL}/n,
+                                     /[\xE1-\xEC]#{    UTF8_TAIL.source * 2}/n,
+                                     /[\xEE-\xEF]#{    UTF8_TAIL.source * 2}/n)
+    UTF8_4            = Regexp.union(/[\xF1-\xF3]#{    UTF8_TAIL.source * 3}/n,
+                                     /\xF0[\x90-\xBF]#{UTF8_TAIL.source * 2}/n,
+                                     /\xF4[\x80-\x8F]#{UTF8_TAIL.source * 2}/n)
+    UTF8_CHAR         = Regexp.union(UTF8_1, UTF8_2, UTF8_3, UTF8_4)
+    TEXT_CHAR         = /[#{CHAR.source}&&[^\r\n]]/n
+    QUOTED_SPECIALS   = /["\\]/n
+    QUOTED_CHAR_safe  = /[#{TEXT_CHAR.source}&&[^#{QUOTED_SPECIALS.source}]]/n
+    QUOTED_CHAR_esc   = /\\#{QUOTED_SPECIALS}/n
+    QUOTED_CHAR_rev1  = Regexp.union(QUOTED_CHAR_safe, QUOTED_CHAR_esc)
+    QUOTED_CHAR_rev2  = Regexp.union(QUOTED_CHAR_rev1,
+                                     UTF8_2, UTF8_3, UTF8_4)
+    QUOTED_rev1       = /"(#{QUOTED_CHAR_rev1}*)"/n
+    QUOTED_rev2       = /"(#{QUOTED_CHAR_rev2}*)"/n
+
+    ATOM_SPECIALS     = /[(){ \x00-\x1f\x7f%*"\\\]]/n
+    ATOM_CHAR         = /[#{CHAR.source}&&[^#{ATOM_SPECIALS.source}]]/n
+    ATOM              = /#{ATOM_CHAR}+/n
+
+    CHARSET_rev1      = /#{ATOM}|#{QUOTED_rev1}/
+    CHARSET_rev2      = /#{ATOM}|#{QUOTED_rev2}/
+    CHARSET           = CHARSET_rev2
+
+    SEARCH_RETURN     = /RETURN (?<return_opts>\([^)]*\)) /i
+    # charset = atom / quoted
+    SEARCH_CHARSET    = /CHARSET (?<charset>#{CHARSET}) /i
+    SEARCH_ARGS       = /\A#{SEARCH_RETURN}?#{SEARCH_CHARSET}?(?<keys>.*)/i
+
+    def search_internal(cmd, args, charset = nil, esearch: nil)
+      args = normalize_searching_criteria(args)
+      # puts; pp "before", cmd:, args:, charset:, esearch:;
+      case args
+      in RawData[SEARCH_ARGS]
+        return_opts    = $~["return_opts"]
+        inline_charset = $~["charset"]
+        _keys          = $~["keys"]
+      in Array[/\ARETURN\z/i,  Array  => return_opts,
+               /\ACHARSET\z/i, String => inline_charset, *_keys]
+      in Array[/\ARETURN\z/i,  Array  => return_opts,    *_keys]
+      in Array[/\ACHARSET\z/i, String => inline_charset, *_keys]
+      in (RawData | Array) => _keys
+      else
+        raise ArgumentError, "invalid search argument: %p" % [args]
+      end
+      if charset
+        if return_opts
+          raise ArgumentError, "CHARSET must be specified inline when RETURN is used"
+        elsif inline_charset
+          raise ArgumentError, "CHARSET was specified twice"
+        else
+          args = charset ? ["CHARSET", charset, *args] : args
+        end
+      end
+      esearch ||= !!return_opts
       synchronize do
         clear_responses("SEARCH")
-        result = nil
+        esearch_result = nil
         send_command(cmd, *args) do |response, tag|
-          if response in data: ESearchResult(tag: ^tag) => result
-            responses("ESEARCH") { _1.delete(result) }
+          if response in data: ESearchResult(tag: ^tag) => esearch_result
+            responses("ESEARCH") { _1.delete(esearch_result) }
           end
         end
-        if result
-          result
-        elsif esearch || keys in RawData[/\ARETURN /] | Array[/\ARETURN\z/i, *]
-          ESearchResult.new
+        search_result = clear_responses("SEARCH").last # ignore excess results
+        if esearch_result
+          esearch_result # silently ignore SEARCH results
+        elsif search_result
+          if esearch
+            # TODO: config.warn_invalid_server_search_response
+          end
+          search_result
+        elsif esearch
+          # pp "after", cmd:, args:, charset:, esearch:;
+          ESearchResult[uid: cmd.start_with?("UID ")]
         else
-          clear_responses("SEARCH").last || []
+          []
         end
       end
     end
