@@ -22,16 +22,15 @@ module Net
 
       # :call-seq: to_a -> Array of integers
       #
-      # When #all contains a sequence set of message numbers or UIDs, +to_a+
-      # converts that SequenceSet to an array of integers.
+      # When #all contains a SequenceSet of message sequence
+      # numbers or UIDs, +to_a+ returns that set as an array of integers.
       #
-      # When #all is +nil+, either because the server returned no results or
-      # because +ALL+ was not included in the IMAP#search +RETURN+ options,
-      # #to_a still returns an empty array.
+      # When #all is +nil+, either because the server
+      # returned no results or because +ALL+ was not included in
+      # the IMAP#search +RETURN+ options, #to_a returns an empty array.
       #
-      # Note that +to_a+ is a valid method on every possible return type for
-      # IMAP#search, so it can be used to hide the difference between servers
-      # returning +SEARCH+ or +ESEARCH+ data.
+      # Note that +to_a+ is also a valid method on SearchResult, so it can be
+      # used without checking if the server returned +SEARCH+ or +ESEARCH+ data.
       def to_a;       all&.numbers || [] end
 
       ##
@@ -97,6 +96,8 @@ module Net
       # §3.1}[https://www.rfc-editor.org/rfc/rfc4731.html#section-3.1]) or
       # +IMAP4rev2+ ({RFC9051
       # §7.3.4}[https://www.rfc-editor.org/rfc/rfc9051.html#section-7.3.4])
+      #
+      # See also: #to_a
       def all;        data.assoc("ALL")&.last        end
 
       # :call-seq: count -> integer or nil
