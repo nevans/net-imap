@@ -22,16 +22,16 @@ module Net
 
       # :call-seq: to_a -> Array of integers
       #
-      # When #all contains a SequenceSet of message sequence
+      # When either #all or #partial contains a SequenceSet of message sequence
       # numbers or UIDs, +to_a+ returns that set as an array of integers.
       #
-      # When #all is +nil+, either because the server
-      # returned no results or because +ALL+ was not included in
+      # When both #all and #partial are +nil+, either because the server
+      # returned no results or because +ALL+ and +PARTIAL+ were not included in
       # the IMAP#search +RETURN+ options, #to_a returns an empty array.
       #
       # Note that +to_a+ is also a valid method on SearchResult, so it can be
       # used without checking if the server returned +SEARCH+ or +ESEARCH+ data.
-      def to_a;       all&.numbers || [] end
+      def to_a; all&.numbers || partial&.to_a || [] end
 
       ##
       # method: tag
@@ -178,6 +178,8 @@ module Net
       # See +PARTIAL+ {[RFC9394]}[https://www.rfc-editor.org/rfc/rfc9394.html]
       # or <tt>CONTEXT=SEARCH</tt>/<tt>CONTEXT=SORT</tt>
       # {[RFC5267]}[https://www.rfc-editor.org/rfc/rfc5267.html]
+      #
+      # See also: #to_a
       class PartialResult < Data.define(:range, :results)
         def initialize(range:, results:)
           range   => Range
@@ -192,6 +194,11 @@ module Net
         ##
         # method: results
         # :call-seq: results -> sequence set or nil
+
+        # Converts #results to an array of integers.
+        #
+        # See ESearchResult#to_a.
+        def to_a; results&.numbers || [] end
       end
 
       # :call-seq: partial -> PartialResult or nil
