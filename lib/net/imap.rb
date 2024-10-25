@@ -2166,8 +2166,8 @@ module Net
     end
 
     # :call-seq:
+    #   search(criteria, charset: nil, return: nil, **criteria) -> result
     #   search(criteria, charset = nil) -> result
-    #   search(criteria, charset: nil, return: nil) -> result
     #
     # Sends a {SEARCH command [IMAP4rev1 §6.4.4]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.4]
     # to search the mailbox for messages that match the given search +criteria+,
@@ -2259,7 +2259,14 @@ module Net
     #   Unlike +criteria+, other return option arguments are not automatically
     #   converted to SequenceSet.
     #
+    # [When +criteria+ is keyword arguments]
+    #   *TODO:* like hash, but strictly for supported standard search keys.
+    # [When +criteria+ is a hash]
+    #   *TODO:* interpret hash-based criteria.
+    #
     # [When +criteria+ is an Array]
+    #   *TODO:* parse array values and print warnings or raise errors.
+    #
     #   When the array begins with <tt>"RETURN"</tt> (case insensitive), the
     #   second array element is translated like the +return+ parameter (as
     #   described above).
@@ -2292,7 +2299,11 @@ module Net
     #   [+Date+]
     #     Encoded as an \IMAP date (see ::encode_date).
     #
+    # [When +criteria+ is RawData] *TODO:* replace String with RawData.
+    #
     # [When +criteria+ is a String]
+    #   *TODO:* parse string and print warnings or raise errors.
+    #
     #   +criteria+ will be sent directly to the server <em>without any
     #   validation or encoding</em>.
     #
