@@ -511,6 +511,8 @@ module Net
   # - Updates #status with the +HIGHESTMODSEQ+ status attribute.
   # - Updates #select and #examine with the +condstore+ modifier, and adds
   #   either a +HIGHESTMODSEQ+ or +NOMODSEQ+ ResponseCode to the responses.
+  #   When the current mailbox is implicitly closed by opening another, the
+  #   server must send the +CLOSED+ response code.
   # - Updates #search, #uid_search, #sort, and #uid_sort with the +MODSEQ+
   #   search criterion, and adds SearchResult#modseq to the search response.
   # - Updates #thread and #uid_thread with the +MODSEQ+ search criterion
@@ -519,6 +521,20 @@ module Net
   #   +MODSEQ+ FetchData attribute.
   # - Updates #store and #uid_store with the +unchangedsince+ modifier and adds
   #   the +MODIFIED+ ResponseCode to the tagged response.
+  #
+  # ==== RFC7162: +QRESYNC+
+  # - All protocol changes and requirements specified for the +CONDSTORE+
+  #   extension are also a part of the +QRESYNC+ extension.
+  # - Updates #enable with +QRESYNC+ parameter.  +QRESYNC+ _must_ be explicitly
+  #   enabled before using any of the extension's command parameters, listed
+  #   below.  Enabling +QRESYNC+ implicitly enables +CONDSTORE+ as well.
+  # - Updates #select and #examine with the +qresync+ parameter, which may add
+  #   VanishedData with <tt>#earlier? => true</tt> to the responses.
+  # - Updates #uid_fetch with the +vanished+ modifier, which may add a
+  #   VanishedData with <tt>#earlier? => true</tt> to the responses, before
+  #   any FetchData.
+  # - Updates #expunge and #uid_expunge to return a VanishedData response.
+  # - Replaces all +EXPUNGE+ responses with +VANISHED+ responses (VanishedData).
   #
   # ==== RFC8438: <tt>STATUS=SIZE</tt>
   # - Updates #status with the +SIZE+ status attribute.
@@ -1405,6 +1421,11 @@ module Net
     # the +condstore+ keyword parameter may be used.
     #   imap.select("mbox", condstore: true)
     #   modseq = imap.responses("HIGHESTMODSEQ", &:last)
+    #
+    # If [QRESYNC[https://www.rfc-editor.org/rfc/rfc7162.html]] is supported,
+    # TODO: the +qresync+ keyword parameter may be used.
+    #   imap.select("mbox", qresync: TODO)
+    #   TODO
     def select(mailbox, condstore: false)
       args = ["SELECT", mailbox]
       args << ["CONDSTORE"] if condstore
@@ -1578,7 +1599,7 @@ module Net
     #
     # ===== Capabilities
     #
-    # The server's capabilities must include +NAMESPACE+
+    # The server's capabilities must include either +IMAP4rev2+ or +NAMESPACE+
     # [RFC2342[https://tools.ietf.org/html/rfc2342]].
     def namespace
       synchronize do
@@ -1879,24 +1900,45 @@ module Net
     #
     # ===== Capabilities
     #
-    # The server's capabilities must include +UNSELECT+
+    # The server's capabilities must include either +IMAP4rev2+ or +UNSELECT+
     # [RFC3691[https://tools.ietf.org/html/rfc3691]].
     def unselect
       send_command("UNSELECT")
     end
 
+    # call-seq:
+    #   expunge -> array of message sequence numbers
+    #   expunge -> VanishedData of UIDs
+    #
     # Sends an {EXPUNGE command [IMAP4rev1 §6.4.3]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.3]
-    # Sends a EXPUNGE command to permanently remove from the currently
-    # selected mailbox all messages that have the \Deleted flag set.
+    # to permanently remove all messages with the +\Deleted+ flag from the
+    # currently selected mailbox.
     #
     # Related: #uid_expunge
+    #
+    # ===== Capabilities
+    #
+    # When either QRESYNC[https://tools.ietf.org/html/rfc7162] or
+    # UIDONLY[https://tools.ietf.org/html/rfc9586] are enabled, #expunge
+    # returns VanishedData, which contains UIDs---<em>not message sequence
+    # numbers</em>.
+    #
+    # *NOTE:* Any unhandled +VANISHED+ #responses without the +EARLIER+ modifier
+    # will be merged into the VanishedData and deleted from #responses.  This is
+    # consistent with how Net::IMAP handles +EXPUNGE+ responses.  Unhandled
+    # <tt>VANISHED (EARLIER)</tt> responses will _not_ be merged or returned.
+    #
+    # *NOTE:* When no messages are expunged, Net::IMAP currently returns an
+    # empty array, regardless of which extensions have been enabled.  In the
+    # future, an empty VanishedData will be returned instead.
     def expunge
-      synchronize do
-        send_command("EXPUNGE")
-        clear_responses("EXPUNGE")
-      end
+      expunge_internal("EXPUNGE")
     end
 
+    # call-seq:
+    #   uid_expunge -> array of message sequence numbers
+    #   uid_expunge -> VanishedData of UIDs
+    #
     # Sends a {UID EXPUNGE command [RFC4315 §2.1]}[https://www.rfc-editor.org/rfc/rfc4315#section-2.1]
     # {[IMAP4rev2 §6.4.9]}[https://www.rfc-editor.org/rfc/rfc9051#section-6.4.9]
     # to permanently remove all messages that have both the <tt>\\Deleted</tt>
@@ -1920,13 +1962,13 @@ module Net
     #
     # ===== Capabilities
     #
-    # The server's capabilities must include +UIDPLUS+
+    # The server's capabilities must include either +IMAP4rev2+ or +UIDPLUS+
     # [RFC4315[https://www.rfc-editor.org/rfc/rfc4315.html]].
+    #
+    # Otherwise, #uid_expunge is updated by extensions in the same way as
+    # #expunge.
     def uid_expunge(uid_set)
-      synchronize do
-        send_command("UID EXPUNGE", SequenceSet.new(uid_set))
-        clear_responses("EXPUNGE")
-      end
+      expunge_internal("UID EXPUNGE", SequenceSet.new(uid_set))
     end
 
     # :call-seq:
@@ -2205,6 +2247,10 @@ module Net
     #   result = imap.search(["SUBJECT", "hi there", "not", "new"])
     #   #=> Net::IMAP::SearchResult[1, 6, 7, 8, modseq: 5594]
     #   result.modseq # => 5594
+    #
+    # The +SEARCH+ command is prohibited when
+    # UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been enabled.
+    # Use #uid_search instead.
     def search(...)
       search_internal("SEARCH", ...)
     end
@@ -2221,6 +2267,15 @@ module Net
     # capability has been enabled.
     #
     # See #search for documentation of parameters.
+    #
+    # ===== Capabilities
+    #
+    # The <tt><message set></tt> search criterion is prohibited when
+    # UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been enabled.
+    # Use +ALL+ or <tt>UID sequence-set</tt> instead.
+    #
+    # Otherwise, #uid_search is updated by extensions in the same way as
+    # #search.
     def uid_search(...)
       search_internal("UID SEARCH", ...)
     end
@@ -2277,12 +2332,19 @@ module Net
     # {[RFC7162]}[https://tools.ietf.org/html/rfc7162] in order to use the
     # +changedsince+ argument.  Using +changedsince+ implicitly enables the
     # +CONDSTORE+ extension.
+    #
+    # When QRESYNC[https://tools.ietf.org/html/rfc7162] is enabled, the
+    # +vanished+ fetch modifier is _not_ allowed.  The +vanished+ modifier can
+    # only be used with #uid_fetch.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] is enabled, the
+    # +FETCH+ command is prohibited.  Use #uid_fetch instead.
     def fetch(set, attr, mod = nil, changedsince: nil)
       fetch_internal("FETCH", set, attr, mod, changedsince: changedsince)
     end
 
     # :call-seq:
-    #   uid_fetch(set, attr, changedsince: nil) -> array of FetchData
+    #   uid_fetch(set, attr, changedsince: nil) -> array of FetchData (or UIDFetchData)
     #
     # Sends a {UID FETCH command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
     # to retrieve data associated with a message in the mailbox.
@@ -2298,7 +2360,15 @@ module Net
     # Related: #fetch, FetchData
     #
     # ===== Capabilities
-    # Same as #fetch.
+    #
+    # When QRESYNC[https://tools.ietf.org/html/rfc7162] is enabled, the
+    # +vanished+ fetch modifier may be used.  TODO: describe +vanished+.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been
+    # enabled, #uid_fetch must be used instead of #fetch, and UIDFetchData will
+    # be returned instead of FetchData.
+    #
+    # Otherwise, #uid_store is updated by extensions in the same way as #store.
     def uid_fetch(set, attr, mod = nil, changedsince: nil)
       fetch_internal("UID FETCH", set, attr, mod, changedsince: changedsince)
     end
@@ -2346,6 +2416,10 @@ module Net
     # {[RFC7162]}[https://tools.ietf.org/html/rfc7162] in order to use the
     # +unchangedsince+ argument.  Using +unchangedsince+ implicitly enables the
     # +CONDSTORE+ extension.
+    #
+    # The +STORE+ command is prohibited when
+    # UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been enabled.
+    # Use #uid_store instead.
     def store(set, attr, flags, unchangedsince: nil)
       store_internal("STORE", set, attr, flags, unchangedsince: unchangedsince)
     end
@@ -2363,7 +2437,11 @@ module Net
     # Related: #store
     #
     # ===== Capabilities
-    # Same as #store.
+    #
+    # When UIDONLY[https://www.rfc-editor.org/rfc/rfc9586.html] has been
+    # enabled, #uid_store must be used instead of #store.
+    #
+    # Otherwise, #uid_store is updated by extensions in the same way as #store.
     def uid_store(set, attr, flags, unchangedsince: nil)
       store_internal("UID STORE", set, attr, flags, unchangedsince: unchangedsince)
     end
@@ -2409,7 +2487,7 @@ module Net
     #
     # ===== Capabilities
     #
-    # The server's capabilities must include +MOVE+
+    # The server's capabilities must include either +IMAP4rev2+ or +MOVE+
     # [RFC6851[https://tools.ietf.org/html/rfc6851]].
     #
     # If +UIDPLUS+ [RFC4315[https://www.rfc-editor.org/rfc/rfc4315.html]] is
@@ -2433,9 +2511,10 @@ module Net
     #
     # ===== Capabilities
     #
-    # Same as #move: The server's capabilities must include +MOVE+
-    # [RFC6851[https://tools.ietf.org/html/rfc6851]].  +UIDPLUS+ also affects
-    # #uid_move the same way it affects #move.
+    # The server's capabilities must include either +IMAP4rev2+ or +MOVE+
+    # [RFC6851[https://tools.ietf.org/html/rfc6851]].
+    #
+    # +UIDPLUS+ affects #uid_move the same way it affects #move.
     def uid_move(set, mailbox)
       copy_internal("UID MOVE", set, mailbox)
     end
@@ -2548,6 +2627,10 @@ module Net
     #   command parameters defined by the extension will implicitly enable it.
     #   See {[RFC7162 §3.1]}[https://www.rfc-editor.org/rfc/rfc7162.html#section-3.1].
     #
+    # [+QRESYNC+ {[RFC7162]}[https://www.rfc-editor.org/rfc/rfc7162.html]]
+    #
+    # TODO: doc this
+    #
     # [+:utf8+ --- an alias for <tt>"UTF8=ACCEPT"</tt>]
     #
     #   In a future release, <tt>enable(:utf8)</tt> will enable either
@@ -2635,7 +2718,7 @@ module Net
     #
     # ===== Capabilities
     #
-    # The server's capabilities must include +IDLE+
+    # The server's capabilities must include either +IMAP4rev2+ or +IDLE+
     # [RFC2177[https://tools.ietf.org/html/rfc2177]].
     def idle(timeout = nil, &response_handler)
       raise LocalJumpError, "no block given" unless response_handler
@@ -3147,6 +3230,21 @@ module Net
         capabilities_cached?
       else
         config.enforce_logindisabled
+      end
+    end
+
+    def expunge_internal(...)
+      synchronize do
+        send_command(...)
+        vanished_array = extract_responses("VANISHED") { !_1.earlier? }
+        if vanished_array.empty?
+          clear_responses("EXPUNGE")
+        elsif vanished_array.length == 1
+          vanished_array.first
+        else
+          merged_uids = SequenceSet[*vanished_array.map(&:uids)]
+          VanishedData[uids: merged_uids, earlier: false]
+        end
       end
     end
 
