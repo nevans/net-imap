@@ -734,7 +734,7 @@ module Net
         when "EXISTS"     then mailbox_data__exists      # RFC3501, RFC9051
         when "ESEARCH"    then esearch_response          # RFC4731, RFC9051, etc
         when "VANISHED"   then expunged_resp             # RFC7162
-        when "UIDFETCH"   then uidfetch_resp             # (draft) UIDONLY
+        when "UIDFETCH"   then uidfetch_resp             # RFC9586
         when "SEARCH"     then mailbox_data__search      # RFC3501 (obsolete)
         when "CAPABILITY" then capability_data__untagged # RFC3501, RFC9051
         when "FLAGS"      then mailbox_data__flags       # RFC3501, RFC9051
@@ -787,7 +787,6 @@ module Net
       def response_data__ignored; response_data__unhandled(IgnoredResponse) end
       alias response_data__noop     response_data__ignored
 
-      alias uidfetch_resp           response_data__unhandled
       alias listrights_data         response_data__unhandled
       alias myrights_data           response_data__unhandled
       alias metadata_resp           response_data__unhandled
@@ -845,6 +844,14 @@ module Net
         seq  = nz_number;     SP!
         name = label "FETCH"; SP!
         data = FetchData.new(seq, msg_att(seq))
+        UntaggedResponse.new(name, data, @str)
+      end
+
+      #   uidfetch-resp = uniqueid SP "UIDFETCH" SP msg-att
+      def uidfetch_resp
+        uid  = uniqueid;         SP!
+        name = label "UIDFETCH"; SP!
+        data = UIDFetchData.new(uid, msg_att(uid))
         UntaggedResponse.new(name, data, @str)
       end
 
@@ -1535,6 +1542,13 @@ module Net
       # From RFC4731 (ESEARCH):
       #   search-return-data    =/ "MODSEQ" SP mod-sequence-value
       #
+      # From RFC5267 (CONTEXT=SEARCH, CONTEXT=SORT):
+      #   search-return-data    =/ ret-data-partial / ret-data-addto /
+      #                            ret-data-removefrom
+      #
+      # From RFC6203 (SEARCH=FUZZY):
+      #   search-return-data    =/ "RELEVANCY" SP score-list
+      #
       # From RFC9394 (PARTIAL):
       #   search-return-data  =/ ret-data-partial
       #
@@ -1547,7 +1561,10 @@ module Net
           when "ALL"        then sequence_set
           when "COUNT"      then number
           when "MODSEQ"     then mod_sequence_value         # RFC7162: CONDSTORE
+          when "RELEVANCY"  then score_list                 # RFC6203: SEARCH=FUZZY
           when "PARTIAL"    then ret_data_partial__value    # RFC9394: PARTIAL
+          when "ADDTO"      then ret_data_addto__value      # RFC5267: CONTEXT=*
+          when "REMOVEFROM" then ret_data_removefrom__value # RFC5267: CONTEXT=*
           else search_return_value
           end
         [label, value]
@@ -1582,6 +1599,40 @@ module Net
       #     ;; the requested range.
       def partial_results; NIL? ? nil : sequence_set end
 
+      #   ret-data-addto        = "ADDTO"
+      #                            SP "(" context-position SP sequence-set
+      #                            *(SP context-position SP sequence-set)
+      #                            ")"
+      def ret_data_addto__value
+        lpar; list = [ret_data_addto__item]
+        (SP!; list << ret_data_addto__item) until rpar?
+        list
+      end
+
+      def ret_data_addto__item
+        ESearchResult::AddToContext.new(context_position, (SP!; sequence_set))
+      end
+
+      #   ret-data-removefrom   = "REMOVEFROM"
+      #                            SP "(" context-position SP sequence-set
+      #                            *(SP context-position SP sequence-set)
+      #                            ")"
+      def ret_data_removefrom__value
+        lpar; list = [ret_data_removefrom__item]
+        (SP!; list << ret_data_removefrom__item) until rpar?
+        list
+      end
+
+      def ret_data_removefrom__item
+        ESearchResult::RemoveFromContext.new(context_position,
+                                             (SP!; sequence_set))
+      end
+
+      #   context-position      = number
+      #       ;; Context position may be 0 for SEARCH result additions.
+      #       ;; <number> from [IMAP]
+      alias context_position number
+
       # search-modifier-name = tagged-ext-label
       alias search_modifier_name tagged_ext_label
 
@@ -1592,6 +1643,19 @@ module Net
       #                     ; quoting).  A sequence-set can be returned
       #                     ; as an atom as well.
       def search_return_value; ExtensionData.new(tagged_ext_val) end
+
+      # From RFC6203 (SEARCH=FUZZY):
+      # score              = 1*3DIGIT
+      #    ;; (1 <= n <= 100)
+      alias score nz_number
+
+      # From RFC6203 (SEARCH=FUZZY):
+      # score-list         = "(" [score *(SP score)] ")"
+      def score_list
+        lpar; return [] if rpar?
+        list = [score]; (SP!; list << score) until rpar?
+        list
+      end
 
       # search-correlator  = SP "(" "TAG" SP tag-string ")"
       def search_correlator
@@ -1935,6 +1999,9 @@ module Net
       #
       # RFC8474: OBJECTID
       #   resp-text-code   =/ "MAILBOXID" SP "(" objectid ")"
+      #
+      # RFC9586: UIDONLY
+      #   resp-text-code   =/ "UIDREQUIRED"
       def resp_text_code
         name = resp_text_code__name
         data =
@@ -1957,6 +2024,7 @@ module Net
           when "HIGHESTMODSEQ"      then SP!; mod_sequence_value   # CONDSTORE
           when "MODIFIED"           then SP!; sequence_set         # CONDSTORE
           when "MAILBOXID"          then SP!; parens__objectid     # RFC8474: OBJECTID
+          when "UIDREQUIRED"        then                           # RFC9586: UIDONLY
           else
             SP? and text_chars_except_rbra
           end

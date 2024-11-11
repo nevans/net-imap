@@ -94,6 +94,12 @@ class IMAPResponseParserTest < Test::Unit::TestCase
   # RFC 5256: THREAD response
   generate_tests_from fixture_file: "thread_responses.yml"
 
+  # RFC 5267: ADDTO and REMOVEFROM search return options
+  generate_tests_from fixture_file: "rfc5267_context_updates.yml"
+
+  # RFC6203: SEARCH=FUZZY extension (RELEVANCY search return option)
+  generate_tests_from fixture_file: "rfc6203_fuzzy_search.yml"
+
   # RFC 7162: CONDSTORE and QRESYNC responses
   generate_tests_from fixture_file: "rfc7162_condstore_qresync_responses.yml"
 
@@ -105,6 +111,9 @@ class IMAPResponseParserTest < Test::Unit::TestCase
 
   # RFC 9394: PARTIAL extension
   generate_tests_from fixture_file: "rfc9394_partial.yml"
+
+  # RFC 9586: UIDONLY extension
+  generate_tests_from fixture_file: "rfc9586_uidonly_responses.yml"
 
   ############################################################################
   # Workarounds or unspecified extensions:
