@@ -3528,6 +3528,7 @@ module Net
     def search_internal(cmd, ...)
       args, esearch = search_args(...)
       synchronize do
+        clear_responses("SEARCH")
         tagged = send_command(cmd, *args)
         tag    = tagged.tag
         # Only the last ESEARCH or SEARCH is used.  Excess results are ignored.
