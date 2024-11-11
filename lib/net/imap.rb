@@ -559,6 +559,8 @@ module Net
   # - Updates #status with the +HIGHESTMODSEQ+ status attribute.
   # - Updates #select and #examine with the +condstore+ modifier, and adds
   #   either a +HIGHESTMODSEQ+ or +NOMODSEQ+ ResponseCode to the responses.
+  #   When the current mailbox is implicitly closed by opening another, the
+  #   server must send the +CLOSED+ response code.
   # - Updates #search, #uid_search, #sort, and #uid_sort with the +MODSEQ+
   #   search criterion, and adds SearchResult#modseq to the search response.
   # - Updates #thread and #uid_thread with the +MODSEQ+ search criterion
@@ -567,6 +569,20 @@ module Net
   #   +MODSEQ+ FetchData attribute.
   # - Updates #store and #uid_store with the +unchangedsince+ modifier and adds
   #   the +MODIFIED+ ResponseCode to the tagged response.
+  #
+  # ==== RFC7162: +QRESYNC+
+  # - All protocol changes and requirements specified for the +CONDSTORE+
+  #   extension are also a part of the +QRESYNC+ extension.
+  # - Updates #enable with +QRESYNC+ parameter.  +QRESYNC+ _must_ be explicitly
+  #   enabled before using any of the extension's command parameters, listed
+  #   below.  Enabling +QRESYNC+ implicitly enables +CONDSTORE+ as well.
+  # - Updates #select and #examine with the +qresync+ parameter, which may add
+  #   VanishedData with <tt>#earlier? => true</tt> to the responses.
+  # - Updates #uid_fetch with the +vanished+ modifier, which may add a
+  #   VanishedData with <tt>#earlier? => true</tt> to the responses, before
+  #   any FetchData.
+  # - Updates #expunge and #uid_expunge to return a VanishedData response.
+  # - Replaces all +EXPUNGE+ responses with +VANISHED+ responses (VanishedData).
   #
   # ==== RFC8438: <tt>STATUS=SIZE</tt>
   # - Updates #status with the +SIZE+ status attribute.
@@ -1577,6 +1593,11 @@ module Net
     # the +condstore+ keyword parameter may be used.
     #   imap.select("mbox", condstore: true)
     #   modseq = imap.responses("HIGHESTMODSEQ", &:last)
+    #
+    # If [QRESYNC[https://www.rfc-editor.org/rfc/rfc7162.html]] is supported,
+    # TODO: the +qresync+ keyword parameter may be used.
+    #   imap.select("mbox", qresync: TODO)
+    #   TODO
     def select(mailbox, condstore: false)
       args = ["SELECT", mailbox]
       args << ["CONDSTORE"] if condstore
@@ -2124,8 +2145,8 @@ module Net
     end
 
     # :call-seq:
+    #   search(criteria, charset: nil, return: nil, **criteria) -> result
     #   search(criteria, charset = nil) -> result
-    #   search(criteria, charset: nil, return: nil) -> result
     #
     # Sends a {SEARCH command [IMAP4rev1 §6.4.4]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.4]
     # to search the mailbox for messages that match the given search +criteria+,
@@ -2217,7 +2238,14 @@ module Net
     #   Unlike +criteria+, other return option arguments are not automatically
     #   converted to SequenceSet.
     #
+    # [When +criteria+ is keyword arguments]
+    #   *TODO:* like hash, but strictly for supported standard search keys.
+    # [When +criteria+ is a hash]
+    #   *TODO:* interpret hash-based criteria.
+    #
     # [When +criteria+ is an Array]
+    #   *TODO:* parse array values and print warnings or raise errors.
+    #
     #   When the array begins with <tt>"RETURN"</tt> (case insensitive), the
     #   second array element is translated like the +return+ parameter (as
     #   described above).
@@ -2250,7 +2278,11 @@ module Net
     #   [+Date+]
     #     Encoded as an \IMAP date (see ::encode_date).
     #
+    # [When +criteria+ is RawData] *TODO:* replace String with RawData.
+    #
     # [When +criteria+ is a String]
+    #   *TODO:* parse string and print warnings or raise errors.
+    #
     #   +criteria+ will be sent directly to the server <em>without any
     #   validation or encoding</em>.
     #
@@ -2619,7 +2651,7 @@ module Net
     end
 
     # :call-seq:
-    #   uid_fetch(set, attr, changedsince: nil, partial: nil) -> array of FetchData (or UIDFetchData)
+    #   uid_fetch(set, attr, changedsince: nil, partial: nil, vanished: nil) -> array of FetchData (or UIDFetchData)
     #
     # Sends a {UID FETCH command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
     # to retrieve data associated with a message in the mailbox.
@@ -2635,6 +2667,10 @@ module Net
     #   whether a +UID+ was specified as a message data item to the +FETCH+.
     #
     # +changedsince+ (optional) behaves the same as with #fetch.
+    #
+    # +vanished+ is an optional ... TODO: describe +vanished+.
+    # <em>The +QRESYNC+ capabability must be enabled.</em>
+    # {[RFC7162]}[https://rfc-editor.org/rfc/rfc7162]
     #
     # +partial+ is an optional range to limit the number of results returned.
     # It's useful when +set+ contains an unknown number of messages.
@@ -2666,6 +2702,9 @@ module Net
     # Related: #fetch, FetchData
     #
     # ==== Capabilities
+    #
+    # QRESYNC[https://tools.ietf.org/html/rfc7162] must be enabled in order to
+    # use the +vanished+ fetch modifier.
     #
     # The server's capabilities must include +PARTIAL+
     # {[RFC9394]}[https://rfc-editor.org/rfc/rfc9394] in order to use the
@@ -2944,6 +2983,10 @@ module Net
     #   is not necessary to explicitly enable +CONDSTORE+—using any of the
     #   command parameters defined by the extension will implicitly enable it.
     #   See {[RFC7162 §3.1]}[https://www.rfc-editor.org/rfc/rfc7162.html#section-3.1].
+    #
+    # [+QRESYNC+ {[RFC7162]}[https://www.rfc-editor.org/rfc/rfc7162.html]]
+    #
+    # TODO: doc this
     #
     # [+:utf8+ --- an alias for <tt>"UTF8=ACCEPT"</tt>]
     #
@@ -3520,14 +3563,13 @@ module Net
           @logout_command_tag = tag
         end
         if block
-          add_response_handler(&block)
+          handler = ->resp { block.call resp, tag }
+          add_response_handler(handler)
         end
         begin
           return get_tagged_response(tag, cmd)
         ensure
-          if block
-            remove_response_handler(block)
-          end
+          remove_response_handler(handler) if handler
         end
       end
     end
@@ -3632,6 +3674,7 @@ module Net
     def search_internal(cmd, ...)
       args, esearch = search_args(...)
       synchronize do
+        clear_responses("SEARCH")
         tagged = send_command(cmd, *args)
         tag    = tagged.tag
         # Only the last ESEARCH or SEARCH is used.  Excess results are ignored.
@@ -3705,6 +3748,7 @@ module Net
     def sort_internal(cmd, sort_keys, search_keys, charset)
       search_keys = normalize_searching_criteria(search_keys)
       synchronize do
+        # TODO: handle ESEARCH response (for ESORT extension)
         send_command(cmd, sort_keys, charset, *search_keys)
         clear_responses("SORT").last || []
       end
