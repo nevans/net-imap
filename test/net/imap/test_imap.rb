@@ -1164,6 +1164,24 @@ EOF
     end
   end
 
+  test "#uid_fetch with partial" do
+    with_fake_server select: "inbox" do |server, imap|
+      server.on("UID FETCH", &:done_ok)
+      imap.uid_fetch 1.., "FAST", partial: 1..500
+      assert_equal("RUBY0002 UID FETCH 1:* FAST (partial 1:500)",
+                   server.commands.pop.raw.strip)
+      imap.uid_fetch 1.. "FAST", partial: 1...501
+      assert_equal("RUBY0002 UID FETCH 1:* FAST (partial 1:500)",
+                   server.commands.pop.raw.strip)
+      imap.uid_fetch 1.. "FAST", partial: -500..-1
+      assert_equal("RUBY0002 UID FETCH 1:* FAST (partial -500:-1)",
+                   server.commands.pop.raw.strip)
+      imap.uid_fetch 1..-1, "FAST", partial: 1..20, changedsince: 123_456
+      assert_equal("RUBY0002 UID FETCH 1:* FAST (PARTIAL 1:20 CHANGEDSINCE 12345)",
+                   server.commands.pop.raw.strip)
+    end
+  end
+
   test "#store with unchangedsince" do
     with_fake_server select: "inbox" do |server, imap|
       server.on("STORE", &:done_ok)
