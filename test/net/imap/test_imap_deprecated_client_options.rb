@@ -4,7 +4,7 @@ require "net/imap"
 require "test/unit"
 require_relative "fake_server"
 
-class DeprecatedClientOptionsTest < Test::Unit::TestCase
+class IMAPDeprecatedClientOptionsTest < Test::Unit::TestCase
   include Net::IMAP::FakeServer::TestHelper
 
   def setup
