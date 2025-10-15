@@ -559,6 +559,8 @@ module Net
   # - Updates #status with the +HIGHESTMODSEQ+ status attribute.
   # - Updates #select and #examine with the +condstore+ modifier, and adds
   #   either a +HIGHESTMODSEQ+ or +NOMODSEQ+ ResponseCode to the responses.
+  #   When the current mailbox is implicitly closed by opening another, the
+  #   server must send the +CLOSED+ response code.
   # - Updates #search, #uid_search, #sort, and #uid_sort with the +MODSEQ+
   #   search criterion, and adds SearchResult#modseq to the search response.
   # - Updates #thread and #uid_thread with the +MODSEQ+ search criterion
@@ -567,6 +569,19 @@ module Net
   #   +MODSEQ+ FetchData attribute.
   # - Updates #store and #uid_store with the +unchangedsince+ modifier and adds
   #   the +MODIFIED+ ResponseCode to the tagged response.
+  #
+  # ==== RFC7162: +QRESYNC+
+  # All protocol changes and requirements specified for the +CONDSTORE+
+  # extension are also a part of the +QRESYNC+ extension.
+  # - Updates #enable with +QRESYNC+ parameter.  +QRESYNC+ _must_ be explicitly
+  #   enabled before using any of the extension's command parameters.  Enabling
+  #   +QRESYNC+ implicitly enables +CONDSTORE+ as well.
+  # - Updates #select and #examine with the +qresync+ parameter, which adds a
+  #   VanishedData object to the result.
+  # - Updates #uid_fetch with the +vanished+ modifier, which adds a VanishedData
+  #   object to the result array, before any FetchData.
+  # - Updates #expunge and #uid_expunge to return a VanishedData response.
+  # - Replaces all +EXPUNGE+ responses with +VANISHED+ responses (VanishedData).
   #
   # ==== RFC8438: <tt>STATUS=SIZE</tt>
   # - Updates #status with the +SIZE+ status attribute.
@@ -1556,6 +1571,9 @@ module Net
         .tap do state_authenticated! _1 end
     end
 
+    # :call-seq:
+    #   select(mailbox, condstore: false, qresync: nil) -> result
+    #
     # Sends a {SELECT command [IMAP4rev1 §6.3.1]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.3.1]
     # to select a +mailbox+ so that messages in the +mailbox+ can be accessed.
     #
@@ -1569,8 +1587,29 @@ module Net
     # When the +condstore+ keyword argument is true, the server is told to
     # enable the extension.  If +mailbox+ supports persistence of mod-sequences,
     # the +HIGHESTMODSEQ+ ResponseCode will be sent as an untagged response to
-    # #select and all `FETCH` responses will include FetchData#modseq.
+    # #select and all +FETCH+ responses will include FetchStruct#modseq.
     # Otherwise, the +NOMODSEQ+ ResponseCode will be sent.
+    # <em>Requires the +CONDSTORE+ capabability.</em>
+    # {[RFC7162]}[https://rfc-editor.org/rfc/rfc7162]
+    #
+    #   imap.select("mbox", condstore: true)
+    #   modseq = imap.responses("HIGHESTMODSEQ", &:last)
+    #
+    # The optional +qresync+ argument can provide quick resynchronization
+    # parameters: the last known UIDVALIDITY, the last known MODSEQ,
+    # known UIDs <em>(optional)</em>, and message sequence match data
+    # <em>(optional)</em>.  When +qresync+ is provided, a SelectResult object
+    # is returned with +UIDVALIDITY+, +HIGHESTMODSEQ+, +VANISHED+, and +FETCH+
+    # results.  Sending +qresync+ implicitly enables +condstore+, too.
+    # <em>Requires the +QRESYNC+ capabability.</em>
+    # {[RFC7162]}[https://rfc-editor.org/rfc/rfc7162]
+    #
+    #   imap.enable("QRESYNC") # must enable before selecting the mailbox
+    #   qresync = imap.select("INBOX", qresync: [uidvalidity, modseq, known_uids])
+    #   qresync => { uidvalidity: ^uidvalidity, highestmodseq: modseq,
+    #                vanished:, updated: }
+    #   vanished.each do delete_message _1 end
+    #   updated .each do update_message _1.uid, flags: _1.flags, modseq: _1.modseq end
     #
     # A Net::IMAP::NoResponseError is raised if the mailbox does not
     # exist or is for some reason non-selectable.
@@ -1579,7 +1618,8 @@ module Net
     #
     # ==== Capabilities
     #
-    # If [UIDPLUS[https://www.rfc-editor.org/rfc/rfc4315.html]] is supported,
+    # If either [UIDPLUS[https://www.rfc-editor.org/rfc/rfc4315.html]]
+    # or [IMAP4rev2[https://www.rfc-editor.org/rfc/rfc9051.html]] is supported,
     # the server may return an untagged "NO" response with a "UIDNOTSTICKY"
     # response code indicating that the mailstore does not support persistent
     # UIDs:
@@ -1587,19 +1627,16 @@ module Net
     #
     # If [CONDSTORE[https://www.rfc-editor.org/rfc/rfc7162.html]] is supported,
     # the +condstore+ keyword parameter may be used.
-    #   imap.select("mbox", condstore: true)
-    #   modseq = imap.responses("HIGHESTMODSEQ", &:last)
-    def select(mailbox, condstore: false)
-      args = ["SELECT", mailbox]
-      args << ["CONDSTORE"] if condstore
-      synchronize do
-        state_unselected! # implicitly closes current mailbox
-        @responses.clear
-        send_command(*args)
-          .tap do state_selected! end
-      end
+    #
+    # If [QRESYNC[https://www.rfc-editor.org/rfc/rfc7162.html]] is enabled,
+    # the +qresync+ keyword parameter may be used.
+    def select(...)
+      select_internal("SELECT", ...)
     end
 
+    # :call-seq:
+    #   examine(mailbox, condstore: false, qresync: nil) -> result
+    #
     # Sends a {EXAMINE command [IMAP4rev1 §6.3.2]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.3.2]
     # to select a +mailbox+ so that messages in the +mailbox+ can be accessed.
     # Behaves the same as #select, except that the selected +mailbox+ is
@@ -1609,15 +1646,8 @@ module Net
     # exist or is for some reason non-examinable.
     #
     # Related: #select
-    def examine(mailbox, condstore: false)
-      args = ["EXAMINE", mailbox]
-      args << ["CONDSTORE"] if condstore
-      synchronize do
-        state_unselected! # implicitly closes current mailbox
-        @responses.clear
-        send_command(*args)
-          .tap do state_selected! end
-      end
+    def examine(...)
+      select_internal("EXAMINE", ...)
     end
 
     # Sends a {CREATE command [IMAP4rev1 §6.3.3]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.3.3]
@@ -2632,6 +2662,7 @@ module Net
 
     # :call-seq:
     #   uid_fetch(set, attr, changedsince: nil, partial: nil) -> array of FetchData (or UIDFetchData)
+    #   uid_fetch(set, attr, changedsince:, vanished: true, partial: nil) -> array of VanishedData and FetchData (or UIDFetchData)
     #
     # Sends a {UID FETCH command [IMAP4rev1 §6.4.8]}[https://www.rfc-editor.org/rfc/rfc3501#section-6.4.8]
     # to retrieve data associated with a message in the mailbox.
@@ -2647,6 +2678,22 @@ module Net
     #   whether a +UID+ was specified as a message data item to the +FETCH+.
     #
     # +changedsince+ (optional) behaves the same as with #fetch.
+    #
+    # +vanished+ can be used to request a list all of the message UIDs in +set+
+    # that have been expunged since +changedsince+.  Setting +vanished+ to true
+    # prepends a VanishedData object to the returned array.  If the server does
+    # not return a +VANISHED+ response, an empty VanishedData object will still
+    # be added.
+    # <em>The +QRESYNC+ capabability must be enabled.</em>
+    # {[RFC7162]}[https://rfc-editor.org/rfc/rfc7162]
+    #
+    # For example:
+    #
+    #   imap.enable("QRESYNC") # must enable before selecting the mailbox
+    #   imap.select("INBOX")
+    #   # first value in the array is VanishedData
+    #   vanished, *fetched = imap.uid_fetch(301..500, %w[flags],
+    #                                       changedsince: 12345, vanished: true)
     #
     # +partial+ is an optional range to limit the number of results returned.
     # It's useful when +set+ contains an unknown number of messages.
@@ -2679,6 +2726,9 @@ module Net
     # Related: #fetch, FetchData
     #
     # ==== Capabilities
+    #
+    # QRESYNC[https://www.rfc-editor.org/rfc/rfc7162] must be enabled in order
+    # to use the +vanished+ fetch modifier.
     #
     # The server's capabilities must include +PARTIAL+
     # {[RFC9394]}[https://rfc-editor.org/rfc/rfc9394] in order to use the
@@ -2959,9 +3009,6 @@ module Net
     #   See {[RFC7162 §3.1]}[https://www.rfc-editor.org/rfc/rfc7162.html#section-3.1].
     #
     # [+QRESYNC+ {[RFC7162]}[https://www.rfc-editor.org/rfc/rfc7162.html]]
-    #   *NOTE:* Enabling QRESYNC will replace +EXPUNGE+ with +VANISHED+, but
-    #   the extension arguments to #select, #examine, and #uid_fetch are not
-    #   supported yet.
     #
     #   Adds quick resynchronization options to #select, #examine, and
     #   #uid_fetch.  +QRESYNC+ _must_ be explicitly enabled before using any of
@@ -3585,6 +3632,20 @@ module Net
       end
     end
 
+    def select_internal(command, mailbox, condstore: false, qresync: nil)
+      args = [command, mailbox]
+      params = []
+      params << "CONDSTORE"          if condstore
+      params << "QRESYNC" << qresync if qresync # TODO: validate qresync params
+      args   << params unless params.empty?
+      synchronize do
+        state_unselected! # implicitly closes current mailbox
+        @responses.clear
+        send_command(*args)
+          .tap do state_selected! end
+      end
+    end
+
     def expunge_internal(...)
       synchronize do
         send_command(...)
@@ -3680,19 +3741,23 @@ module Net
       end
     end
 
-    def fetch_internal(cmd, set, attr, mod = nil, partial: nil, changedsince: nil)
-      if partial && !cmd.start_with?("UID ")
+    def fetch_internal(cmd, set, attr, mod = nil,
+                       partial: nil,
+                       changedsince: nil,
+                       vanished: false)
+      if cmd.start_with?("UID ")
+        if vanished && !changedsince
+          raise ArgumentError, "vanished must be used with changedsince"
+        end
+      elsif vanished
+        raise ArgumentError, "vanished can only be used with uid_fetch"
+      elsif partial
         raise ArgumentError, "partial can only be used with uid_fetch"
       end
       set = SequenceSet[set]
-      if partial
-        mod ||= []
-        mod << "PARTIAL" << PartialRange[partial]
-      end
-      if changedsince
-        mod ||= []
-        mod << "CHANGEDSINCE" << Integer(changedsince)
-      end
+      (mod ||= []) << "PARTIAL"      << PartialRange[partial] if partial
+      (mod ||= []) << "CHANGEDSINCE" << Integer(changedsince) if changedsince
+      (mod ||= []) << "VANISHED"                              if vanished
       case attr
       when String then
         attr = RawData.new(attr)
@@ -3704,7 +3769,7 @@ module Net
 
       args = [cmd, set, attr]
       args << mod if mod
-      send_command_returning_fetch_results(*args)
+      send_command_returning_fetch_results(*args, vanished:)
     end
 
     def store_internal(cmd, set, attr, flags, unchangedsince: nil)
@@ -3715,14 +3780,20 @@ module Net
       send_command_returning_fetch_results(cmd, *args)
     end
 
-    def send_command_returning_fetch_results(...)
+    def send_command_returning_fetch_results(*args, vanished: false)
       synchronize do
         clear_responses("FETCH")
         clear_responses("UIDFETCH")
-        send_command(...)
+        send_command(*args)
         fetches    = clear_responses("FETCH")
         uidfetches = clear_responses("UIDFETCH")
-        uidfetches.any? ? uidfetches : fetches
+        fetches    = uidfetches if uidfetches.any?
+        if vanished
+          vanished = extract_responses("VANISHED", &:earlier?).last ||
+            VanishedData[uids: SequenceSet.empty, earlier: true]
+          fetches = [vanished, *fetches].freeze
+        end
+        fetches
       end
     end
 
