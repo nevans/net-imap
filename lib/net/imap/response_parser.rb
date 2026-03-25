@@ -691,6 +691,8 @@ module Net
         CRLF!
         EOF!
         resp
+      rescue SystemStackError
+        parse_error("response recursion too deep")
       end
 
       # RFC3501 & RFC9051:

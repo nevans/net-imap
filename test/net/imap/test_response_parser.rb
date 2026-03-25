@@ -356,4 +356,53 @@ class ResponseParserTest < Net::IMAP::TestCase
     assert_instance_of Net::IMAP::CopyUIDData, response.data.code.data
   end
 
+  def deeply_nested_bodystructure(depth)
+    leaf = '("TEXT" "PLAIN" NIL NIL NIL "7BIT" 1 1)'
+    depth.times.reduce(leaf) { |part, _| "(#{part} \"MIXED\")" }
+  end
+
+  def deeply_nested_thread(depth)
+    depth.times.reduce("(1)") { |thread, _| "(#{thread}(1))" }
+  end
+
+  def deeply_nested_extension_value(depth)
+    depth.times.reduce("1") { |value, _| "(#{value})" }
+  end
+
+  test "deeply nested BODYSTRUCTURE raises ResponseParseError instead of SystemStackError" do
+    parser = Net::IMAP::ResponseParser.new
+    response = "* 1 FETCH (BODYSTRUCTURE #{deeply_nested_bodystructure(6000)})\r\n"
+
+    error = assert_raise(Net::IMAP::ResponseParseError) do
+      parser.parse(response)
+    end
+
+    assert_equal "response recursion too deep", error.message
+    assert_instance_of SystemStackError, error.cause
+  end
+
+  test "deeply nested THREAD raises ResponseParseError instead of SystemStackError" do
+    parser = Net::IMAP::ResponseParser.new
+    response = "* THREAD #{deeply_nested_thread(6000)}\r\n"
+
+    error = assert_raise(Net::IMAP::ResponseParseError) do
+      parser.parse(response)
+    end
+
+    assert_equal "response recursion too deep", error.message
+    assert_instance_of SystemStackError, error.cause
+  end
+
+  test "deeply nested STATUS extension raises ResponseParseError instead of SystemStackError" do
+    parser = Net::IMAP::ResponseParser.new
+    response = "* STATUS INBOX (X #{deeply_nested_extension_value(11_000)})\r\n"
+
+    error = assert_raise(Net::IMAP::ResponseParseError) do
+      parser.parse(response)
+    end
+
+    assert_equal "response recursion too deep", error.message
+    assert_instance_of SystemStackError, error.cause
+  end
+
 end
