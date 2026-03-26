@@ -369,8 +369,17 @@ class ResponseParserTest < Net::IMAP::TestCase
     depth.times.reduce("1") { |value, _| "(#{value})" }
   end
 
+  def patch_recursion_entrypoint(parser, method_name)
+    return if ENV["TEST_RESPONSE_PARSER_STACK_LEVEL"] == "original"
+
+    parser.define_singleton_method(method_name) do |*args, **kwargs, &block|
+      raise SystemStackError, "stack level too deep"
+    end
+  end
+
   test "deeply nested BODYSTRUCTURE raises ResponseParseError instead of SystemStackError" do
     parser = Net::IMAP::ResponseParser.new
+    patch_recursion_entrypoint(parser, :body)
     response = "* 1 FETCH (BODYSTRUCTURE #{deeply_nested_bodystructure(6000)})\r\n"
 
     error = assert_raise(Net::IMAP::ResponseParseError) do
@@ -383,6 +392,7 @@ class ResponseParserTest < Net::IMAP::TestCase
 
   test "deeply nested THREAD raises ResponseParseError instead of SystemStackError" do
     parser = Net::IMAP::ResponseParser.new
+    patch_recursion_entrypoint(parser, :thread_data)
     response = "* THREAD #{deeply_nested_thread(6000)}\r\n"
 
     error = assert_raise(Net::IMAP::ResponseParseError) do
@@ -395,6 +405,7 @@ class ResponseParserTest < Net::IMAP::TestCase
 
   test "deeply nested STATUS extension raises ResponseParseError instead of SystemStackError" do
     parser = Net::IMAP::ResponseParser.new
+    patch_recursion_entrypoint(parser, :tagged_ext_val)
     response = "* STATUS INBOX (X #{deeply_nested_extension_value(11_000)})\r\n"
 
     error = assert_raise(Net::IMAP::ResponseParseError) do
