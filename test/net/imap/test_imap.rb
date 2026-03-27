@@ -138,16 +138,31 @@ class IMAPTest < Net::IMAP::TestCase
       end
     end
 
-    def test_starttls_stripping
+    def test_starttls_stripping_not_ok
       imap = nil
-      starttls_stripping_test do |port|
+      server = create_tcp_server
+      port = server.addr[1]
+      start_server do
+        sock = server.accept
+        begin
+          sock.print("* OK test server\r\n")
+          sock.gets
+          sock.print("RUBY0001 BUG unhandled command\r\n")
+        ensure
+          sock.close
+          server.close
+        end
+      end
+      begin
         imap = Net::IMAP.new("localhost", :port => port)
         assert_raise(Net::IMAP::InvalidResponseError) do
           imap.starttls(:ca_file => CA_FILE)
         end
         assert imap.disconnected?
-        imap
+      ensure
+        imap.disconnect if imap && !imap.disconnected?
       end
+
       assert_equal false, imap.tls_verified?
       assert_equal({ca_file: CA_FILE},        imap.ssl_ctx_params)
       assert_equal(CA_FILE,                   imap.ssl_ctx.ca_file)
@@ -958,27 +973,6 @@ class IMAPTest < Net::IMAP::TestCase
     begin
       imap = yield(port)
       imap.logout if !imap.disconnected?
-    ensure
-      imap.disconnect if imap && !imap.disconnected?
-    end
-  end
-
-  def starttls_stripping_test
-    server = create_tcp_server
-    port = server.addr[1]
-    start_server do
-      sock = server.accept
-      begin
-        sock.print("* OK test server\r\n")
-        sock.gets
-        sock.print("RUBY0001 BUG unhandled command\r\n")
-      ensure
-        sock.close
-        server.close
-      end
-    end
-    begin
-      imap = yield(port)
     ensure
       imap.disconnect if imap && !imap.disconnected?
     end
