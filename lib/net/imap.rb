@@ -3174,6 +3174,7 @@ module Net
 
       synchronize do
         tag = Thread.current[:net_imap_tag] = generate_tag
+        guard_against_tagged_response_skipping_handler!(tag, "IDLE")
         put_string("#{tag} IDLE#{CRLF}")
 
         begin
@@ -3638,6 +3639,7 @@ module Net
           put_string(" ")
           send_data(i, tag)
         end
+        guard_against_tagged_response_skipping_handler!(tag, cmd)
         put_string(CRLF)
         if cmd == "LOGOUT"
           @logout_command_tag = tag
@@ -3653,6 +3655,19 @@ module Net
           end
         end
       end
+    rescue InvalidResponseError
+      disconnect
+      raise
+    end
+
+    def guard_against_tagged_response_skipping_handler!(tag, cmd)
+      return unless (resp = @tagged_responses[tag])&.name&.upcase == "OK"
+      raise InvalidResponseError, format(
+        "Received tagged 'OK' to incomplete %s command (tag=%s).  " \
+        "This could indicate a malicious server, a man-in-the-middle, or " \
+        "client-side command injection.  Disconnecting.",
+        cmd, tag
+      )
     end
 
     def generate_tag
