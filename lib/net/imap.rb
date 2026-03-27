@@ -3639,20 +3639,14 @@ module Net
           put_string(" ")
           send_data(i, tag)
         end
+        @logout_command_tag = tag if cmd == "LOGOUT"
         guard_against_tagged_response_skipping_handler!(tag, cmd)
-        put_string(CRLF)
-        if cmd == "LOGOUT"
-          @logout_command_tag = tag
-        end
-        if block
-          add_response_handler(&block)
-        end
+        add_response_handler(&block) if block
         begin
-          return get_tagged_response(tag, cmd)
+          put_string(CRLF)
+          get_tagged_response(tag, cmd)
         ensure
-          if block
-            remove_response_handler(block)
-          end
+          remove_response_handler(block) if block
         end
       end
     rescue InvalidResponseError
