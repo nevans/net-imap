@@ -82,4 +82,26 @@ class ResponseReaderTest < Net::IMAP::TestCase
     end
   end
 
+  test "linear performance detecting literal continuation" do
+    omit_unless_cruby "flaky on different platforms"
+    omit_if(ENV["CI"], "slow and flaky, skipping in CI")
+
+    client = FakeClient.new
+    io = StringIO.new "", "rb"
+    rcvr = Net::IMAP::ResponseReader.new(client, io)
+
+    sequence = [100, 1_000, 10_000]
+    assert_strict_linear_time(sequence, prepare: ->(n) {
+      parts = Array.new(n) {|i| "BODY[#{i.succ}] {1}\r\nX" }.join(" ")
+      response = "* 1 FETCH (#{parts})\r\n"
+      embedded = "#{response}* OK next response\r\n"
+      io.string = embedded
+      assert_equal response, rcvr.read_response_buffer
+      io.rewind
+      response
+    }) do
+      io.rewind
+      rcvr.read_response_buffer
+    end
+  end
 end
