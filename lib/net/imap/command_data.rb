@@ -77,12 +77,23 @@ module Net
       put_string('"' + str.gsub(/["\\]/, "\\\\\\&") + '"')
     end
 
-    def send_binary_literal(str, tag) = send_literal(str, tag, binary: true)
+    def send_binary_literal(*, **) = send_literal(*, **, binary: true)
 
-    def send_literal(str, tag = nil, binary: false)
+    # `non_sync` is an optional tri-state flag:
+    # * `true`  -> Force non-synchronizing `LITERAL+`/`LITERAL-` behavior.
+    #   TODO: raise or warn when capabilities don't allow non_sync.
+    # * `false` -> Force normal synchronizing literal behavior.
+    # * `nil`   -> (default) Currently behaves like `false` (will be dynamic).
+    #   TODO: Dynamic, based on capabilities and bytesize.
+    def send_literal(str, tag = nil, binary: false, non_sync: nil)
       synchronize do
         prefix = "~" if binary
-        put_string("#{prefix}{#{str.bytesize}}\r\n")
+        plus = "+" if non_sync
+        put_string("#{prefix}{#{str.bytesize}#{plus}}\r\n")
+        if non_sync
+          put_string(str)
+          return
+        end
         @continued_command_tag = tag
         @continuation_request_exception = nil
         begin
@@ -149,8 +160,14 @@ module Net
       end
     end
 
-    class Literal < CommandData # :nodoc:
-      def initialize(data:)
+    class Literal < Data.define(:data, :non_sync) # :nodoc:
+      def self.validate(...)
+        data = new(...)
+        data.validate
+        data
+      end
+
+      def initialize(data:, non_sync: nil)
         data = -String(data.to_str).b or
           raise DataFormatError, "#{self.class} expects string input"
         super
@@ -167,7 +184,7 @@ module Net
       end
 
       def send_data(imap, tag)
-        imap.__send__(:send_literal, data, tag)
+        imap.__send__(:send_literal, data, tag, non_sync:)
       end
     end
 
@@ -175,7 +192,7 @@ module Net
       def validate = nil # all bytes are okay
 
       def send_data(imap, tag)
-        imap.__send__(:send_binary_literal, data, tag)
+        imap.__send__(:send_binary_literal, data, tag, non_sync:)
       end
     end
 
