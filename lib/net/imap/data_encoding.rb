@@ -183,9 +183,9 @@ module Net
       end
 
       # Check if argument is a valid 'number64' according to RFC 9051
-      #     number64        = 1*DIGIT
+      #     nz-number64     = digit-nz *DIGIT
       #                        ; Unsigned 63-bit integer
-      #                        ; (0 <= n <= 9,223,372,036,854,775,807)
+      #                        ; (0 < n <= 9,223,372,036,854,775,807)
       def valid_nz_number64?(num)
         0 < num && num <= 0x7fff_ffff_ffff_ffff
       end
