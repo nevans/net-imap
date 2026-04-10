@@ -642,9 +642,9 @@ module Net
   #   RFC 5322, DOI 10.17487/RFC5322, October 2008,
   #   <https://www.rfc-editor.org/info/rfc5322>.
   #
-  #   <em>Note: obsoletes</em>
-  #   RFC-2822[https://www.rfc-editor.org/rfc/rfc2822]<em> (April 2001) and</em>
-  #   RFC-822[https://www.rfc-editor.org/rfc/rfc822]<em> (August 1982).</em>
+  #   *NOTE*: obsoletes
+  #   RFC-2822[https://www.rfc-editor.org/rfc/rfc2822] (April 2001) and
+  #   RFC-822[https://www.rfc-editor.org/rfc/rfc822] (August 1982).
   #
   # [CHARSET[https://www.rfc-editor.org/rfc/rfc2978]]::
   #   Freed, N. and J. Postel, "IANA Charset Registration Procedures", BCP 19,
@@ -751,8 +751,8 @@ module Net
   #   Gulbrandsen, A. and N. Freed, Ed., "Internet Message Access Protocol
   #   (\IMAP) - MOVE Extension", RFC 6851, DOI 10.17487/RFC6851, January 2013,
   #   <https://www.rfc-editor.org/info/rfc6851>.
-  # [UTF8=ACCEPT[https://www.rfc-editor.org/rfc/rfc6855]]::
-  # [UTF8=ONLY[https://www.rfc-editor.org/rfc/rfc6855]]::
+  # [{UTF8=ACCEPT}[https://www.rfc-editor.org/rfc/rfc6855]]::
+  # [{UTF8=ONLY}[https://www.rfc-editor.org/rfc/rfc6855]]::
   #   Resnick, P., Ed., Newman, C., Ed., and S. Shen, Ed.,
   #   "IMAP Support for UTF-8", RFC 6855, DOI 10.17487/RFC6855, March 2013,
   #   <https://www.rfc-editor.org/info/rfc6855>.
