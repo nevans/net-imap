@@ -86,9 +86,9 @@ module Net
     #   TODO: raise or warn when capabilities don't allow non_sync.
     # * `false` -> Force normal synchronizing literal behavior.
     # * `nil`   -> (default) Currently behaves like `false` (will be dynamic).
-    #   TODO: Dynamic, based on capabilities and bytesize.
     def send_literal(str, tag = nil, binary: false, non_sync: nil)
       synchronize do
+        non_sync = non_sync_literal?(str.bytesize) if non_sync.nil?
         prefix = "~" if binary
         plus = "+" if non_sync
         put_string("#{prefix}{#{str.bytesize}#{plus}}\r\n")
@@ -108,6 +108,13 @@ module Net
           @continuation_request_exception = nil
         end
       end
+    end
+
+    def non_sync_literal?(bytesize)
+      capabilities_cached? &&
+        bytesize <= config.max_non_synchronizing_literal &&
+        (capable?("LITERAL+") ||
+         bytesize <= 4096 && (capable?("IMAP4rev2") || capable?("LITERAL-")))
     end
 
     def send_number_data(num)

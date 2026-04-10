@@ -450,8 +450,8 @@ module Net
   #
   # Although IMAP4rev2[https://www.rfc-editor.org/rfc/rfc9051] is not supported
   # yet, Net::IMAP supports several extensions that have been folded into it:
-  # +ENABLE+, +IDLE+, +MOVE+, +NAMESPACE+, +SASL-IR+, +UIDPLUS+, +UNSELECT+,
-  # <tt>STATUS=SIZE</tt>, and the fetch side of +BINARY+.
+  # +ENABLE+, +IDLE+, +LITERAL-+, +MOVE+, +NAMESPACE+, +SASL-IR+, +UIDPLUS+,
+  # +UNSELECT+, <tt>STATUS=SIZE</tt>, and the fetch side of +BINARY+.
   # Commands for these extensions are listed with the {Core IMAP
   # commands}[rdoc-ref:Net::IMAP@Core+IMAP+commands], above.
   #
@@ -459,7 +459,7 @@ module Net
   #   <em>The following are folded into +IMAP4rev2+ but are currently
   #   unsupported or incompletely supported by</em> Net::IMAP<em>: RFC4466
   #   extensions, +SEARCHRES+, +LIST-EXTENDED+, +LIST-STATUS+,
-  #   +LITERAL-+, and +SPECIAL-USE+.</em>
+  #   and +SPECIAL-USE+.</em>
   #
   # ==== RFC2087: +QUOTA+
   # +NOTE:+ Only the +STORAGE+ quota resource type is currently supported.
@@ -568,6 +568,15 @@ module Net
   #   +MODSEQ+ FetchData attribute.
   # - Updates #store and #uid_store with the +unchangedsince+ modifier and adds
   #   the +MODIFIED+ ResponseCode to the tagged response.
+  #
+  # ==== RFC7888: <tt>LITERAL+</tt>
+  # - Literal strings smaller than Config#max_non_synchronizing_literal bytes
+  #   are sent without waiting for the server's continuation request.
+  #
+  # ==== RFC7888: +LITERAL-+
+  # - Literal strings smaller than 4096 bytes or
+  #   Config#max_non_synchronizing_literal (whichever is smaller)
+  #   are sent without waiting for the server's continuation request.
   #
   # ==== RFC8438: <tt>STATUS=SIZE</tt>
   # - Updates #status with the +SIZE+ status attribute.

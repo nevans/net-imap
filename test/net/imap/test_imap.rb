@@ -673,7 +673,9 @@ class IMAPTest < Net::IMAP::TestCase
   end
 
   test("send literal args") do
-    with_fake_server do |server, imap|
+    with_fake_server(with_extensions: %w[LITERAL-]) do |server, imap|
+      # disable automatic non-synchronizing literals
+      imap.config.max_non_synchronizing_literal = -1
       server.on "TEST", &:done_ok
       send_args = ->(*args) do
         imap.__send__(:send_command, "TEST", *args)
@@ -681,12 +683,28 @@ class IMAPTest < Net::IMAP::TestCase
       send_args.call ["\xDE\xAD\xBE\xEF".b]
       assert_equal "({4}\r\n\xDE\xAD\xBE\xEF)".b, server.commands.pop.args
 
+      # enable automatic non-synchronizing literals
+      imap.config.max_non_synchronizing_literal = 1024
       buff = bytes = nil
       server.literal_acceptor = proc { buff, bytes = _1, _2; false }
-      assert_raise(Net::IMAP::NoResponseError) do
-        send_args.call Net::IMAP::Literal["\x01" * 10]
+      server.on "TEST", &:done_ok
+      send_args = ->(*args) do
+        imap.__send__(:send_command, "TEST", *args)
       end
-      assert_match(/TEST \{10\}\r\n\z/, buff)
+      send_args.call ["\xDE\xAD\xBE\xEF".b]
+      assert_equal "({4+}\r\n\xDE\xAD\xBE\xEF)".b, server.commands.pop.args
+      assert_nil buff
+      assert_nil bytes
+
+      # limited automatic non-synchronizing literals
+      imap.config.max_non_synchronizing_literal = 5
+      assert_raise(Net::IMAP::NoResponseError) do
+        send_args.call [
+          Net::IMAP::Literal["\rhi\r"],
+          Net::IMAP::Literal["\x01" * 10],
+        ]
+      end
+      assert_match(/TEST \(\{4\+\}\r\n\rhi\r \{10\}\r\n\z/, buff)
       assert_equal 10, bytes
       assert_empty server.commands
 
@@ -703,18 +721,23 @@ class IMAPTest < Net::IMAP::TestCase
       assert_nil buff
       assert_nil bytes
 
+      imap.config.max_non_synchronizing_literal = 5
       server.literal_acceptor = proc { true }
       send_args.call("literal",   Net::IMAP::Literal["\r",       false],
+                     "literal",   Net::IMAP::Literal["αβ",         nil],
                      "literal",   Net::IMAP::Literal["αβγδε",      nil],
                      "literal+",  Net::IMAP::Literal["αβγδε",     true],
                      "literal8",  Net::IMAP::Literal8["\0",      false],
+                     "literal8+", Net::IMAP::Literal8["\0" * 2,    nil],
                      "literal8",  Net::IMAP::Literal8["\0" * 6,    nil],
                      "literal8+", Net::IMAP::Literal8["\0" * 8,   true],
                      "done")
       assert_equal("literal"   " {1}\r\n\r "                 \
+                   "literal"   " {4+}\r\nαβ "                \
                    "literal"   " {10}\r\nαβγδε "             \
                    "literal+"  " {10+}\r\nαβγδε "            \
                    "literal8"  " ~{1}\r\n\0 "                \
+                   "literal8+" " ~{2+}\r\n\0\0 "             \
                    "literal8"  " ~{6}\r\n\0\0\0\0\0\0 "      \
                    "literal8+" " ~{8+}\r\n\0\0\0\0\0\0\0\0 " \
                    "done".b,

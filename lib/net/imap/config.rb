@@ -281,6 +281,40 @@ module Net
         0.5r => true,
       }
 
+      # The maximum bytesize for sending non-synchronizing literals, when the
+      # server supports them.  To disable non-synchronizing literals, set the
+      # value to +-1+.
+      #
+      # Non-synchronizing literals are only sent when the server's
+      # capabilities[rdoc-ref:IMAP#capabilities] have been
+      # cached[rdoc-ref:IMAP#capabilities_cached?] and include either
+      # <tt>LITERAL+</tt> [RFC7888[https://www.rfc-editor.org/rfc/rfc7888]],
+      # <tt>LITERAL-</tt> [RFC7888[https://www.rfc-editor.org/rfc/rfc7888]], or
+      # +IMAP4rev2+ [RFC9051[https://www.rfc-editor.org/rfc/rfc9051]].
+      #
+      # For <tt>LITERAL+</tt>, this value is the only limit on whether a literal
+      # value is sent as non-synchronizing literals.  For <tt>LITERAL-</tt> and
+      # <tt>IMAP4rev2</tt>, non-synchronizing literals must also be smaller than
+      # +4096+ bytes.
+      #
+      # Non-synchronizing literals avoid the latency of waiting for the server
+      # to allow continuation.  However, if a client sends a non-synchronizing
+      # literal that is too large for the server, the server may need to close
+      # the connection.  Because <tt>LITERAL+</tt> does not directly indicate
+      # the server's limits, it's best to avoid sending very large
+      # non-synchronized literals.
+      #
+      # ==== Versioned Defaults
+      #
+      # max_non_synchronizing_literal <em>was added in +v0.6.4+.</em>
+      #
+      # * original: +-1+ (_never_ send non-synchronizing literals)
+      # * +0.6+: 16 KiB
+      attr_accessor :max_non_synchronizing_literal, type: Integer?, defaults: {
+        0.0r => -1,
+        0.6r => 16 << 16, # 16 KiB
+      }
+
       # The maximum allowed server response size.  When +nil+, there is no limit
       # on response size.
       #
