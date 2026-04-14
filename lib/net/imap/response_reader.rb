@@ -8,10 +8,14 @@ module Net
 
       def initialize(client, sock)
         @client, @sock = client, sock
+        # cached config
+        @max_response_size = nil
+        # response buffer state
         @buff = @literal_size = nil
       end
 
       def read_response_buffer
+        @max_response_size = client.max_response_size
         @buff = String.new
         catch :eof do
           while true
@@ -27,6 +31,10 @@ module Net
 
       private
 
+      # cached config
+      attr_reader :max_response_size
+
+      # response buffer state
       attr_reader :buff, :literal_size
 
       def bytes_read          = buff.bytesize
@@ -58,7 +66,6 @@ module Net
         [limit, max_response_remaining!].compact.min
       end
 
-      def max_response_size      = client.max_response_size
       def max_response_remaining = max_response_size &.- bytes_read
       def response_too_large?    = max_response_size &.< min_response_size
       def min_response_size      = bytes_read + min_response_remaining
