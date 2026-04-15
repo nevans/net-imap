@@ -19,7 +19,10 @@ module Net
         @buff = String.new
         catch :eof do
           while true
+            guard_response_too_large!
             read_line
+            # check before allocating memory for literal
+            guard_response_too_large!
             break unless literal_size
             read_literal
           end
@@ -47,23 +50,16 @@ module Net
       end
 
       def read_line
-        line = (@sock.gets(CRLF, read_limit) or throw :eof)
-        buff << line
-        max_response_remaining! unless line_done?
+        line = (@sock.gets(CRLF, max_response_remaining) or throw :eof)
         @literal_size = get_literal_size(line)
+        buff << line
       end
 
       def read_literal
-        # check before allocating memory for literal
-        max_response_remaining!
         literal = String.new(capacity: literal_size)
-        buff << (@sock.read(read_limit(literal_size), literal) or throw :eof)
+        buff << (@sock.read(literal_size, literal) or throw :eof)
       ensure
         @literal_size = nil
-      end
-
-      def read_limit(limit = nil)
-        [limit, max_response_remaining!].compact.min
       end
 
       def max_response_remaining = max_response_size &.- bytes_read
@@ -74,10 +70,11 @@ module Net
         empty? ? 3 : done? ? 0 : (literal_size || 0) + 2
       end
 
-      def max_response_remaining!
-        return max_response_remaining unless response_too_large?
-        raise ResponseTooLargeError.new(
-          max_response_size:, bytes_read:, literal_size:,
+      def guard_response_too_large! = (raise self if response_too_large?)
+
+      def exception(msg = nil)
+        ResponseTooLargeError.new(
+          msg, max_response_size:, bytes_read:, literal_size:,
         )
       end
 
