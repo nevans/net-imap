@@ -8,51 +8,60 @@ module Net
 
       def initialize(client, sock)
         @client, @sock = client, sock
+        # cached config
+        @max_response_size = nil
+        # response buffer state
+        @buff = @literal_size = nil
       end
 
       def read_response_buffer
+        @max_response_size = client.max_response_size
         @buff = String.new
         catch :eof do
           while true
+            guard_response_too_large!
             read_line
-            break unless (@literal_size = get_literal_size)
+            # check before allocating memory for literal
+            guard_response_too_large!
+            break unless literal_size
             read_literal
           end
         end
         buff
       ensure
-        @buff = nil
+        @buff = @literal_size = nil
       end
 
       private
 
+      # cached config
+      attr_reader :max_response_size
+
+      # response buffer state
       attr_reader :buff, :literal_size
 
       def bytes_read          = buff.bytesize
       def empty?              = buff.empty?
-      def done?               = line_done? && !get_literal_size
+      def done?               = line_done? && !literal_size
       def line_done?          = buff.end_with?(CRLF)
-      def get_literal_size    = /\{(\d+)\}\r\n\z/n =~ buff && $1.to_i
+
+      def get_literal_size(buff)
+        buff.end_with?("}\r\n") && buff.rindex(/\{(\d+)\}\r\n\z/n) && $1.to_i
+      end
 
       def read_line
-        buff << (@sock.gets(CRLF, read_limit) or throw :eof)
-        max_response_remaining! unless line_done?
+        line = (@sock.gets(CRLF, max_response_remaining) or throw :eof)
+        @literal_size = get_literal_size(line)
+        buff << line
       end
 
       def read_literal
-        # check before allocating memory for literal
-        max_response_remaining!
         literal = String.new(capacity: literal_size)
-        buff << (@sock.read(read_limit(literal_size), literal) or throw :eof)
+        buff << (@sock.read(literal_size, literal) or throw :eof)
       ensure
         @literal_size = nil
       end
 
-      def read_limit(limit = nil)
-        [limit, max_response_remaining!].compact.min
-      end
-
-      def max_response_size      = client.max_response_size
       def max_response_remaining = max_response_size &.- bytes_read
       def response_too_large?    = max_response_size &.< min_response_size
       def min_response_size      = bytes_read + min_response_remaining
@@ -61,10 +70,11 @@ module Net
         empty? ? 3 : done? ? 0 : (literal_size || 0) + 2
       end
 
-      def max_response_remaining!
-        return max_response_remaining unless response_too_large?
-        raise ResponseTooLargeError.new(
-          max_response_size:, bytes_read:, literal_size:,
+      def guard_response_too_large! = (raise self if response_too_large?)
+
+      def exception(msg = nil)
+        ResponseTooLargeError.new(
+          msg, max_response_size:, bytes_read:, literal_size:,
         )
       end
 
