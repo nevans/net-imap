@@ -89,4 +89,21 @@ class SearchDataTests < Net::IMAP::TestCase
     assert_equal("99 111 44 (MODSEQ 999)",
                  Net::IMAP::SearchResult[99, 111, 44, modseq: 999].to_s(nil))
   end
+
+  test "#to_sequence_set" do
+    assert_equal("1,3", Net::IMAP::SearchResult[1, 3].to_sequence_set.to_s)
+    assert Net::IMAP::SearchResult[1, 3].to_sequence_set.frozen?
+    assert_equal("1:3", Net::IMAP::SearchResult[1, 2, 3].to_sequence_set.to_s)
+    assert_equal(
+      "44,99,111",
+      Net::IMAP::SearchResult[99, 111, 44, modseq: 999].to_sequence_set.to_s
+    )
+    assert_equal(
+      "1:4,9:10,12",
+      Net::IMAP::SearchResult[9, 1, 2, 3, 4, 10, 12].to_sequence_set.to_s
+    )
+    assert_equal(Net::IMAP::SequenceSet.empty,
+                 Net::IMAP::SearchResult[].to_sequence_set)
+    assert Net::IMAP::SearchResult[].to_sequence_set.frozen?
+  end
 end

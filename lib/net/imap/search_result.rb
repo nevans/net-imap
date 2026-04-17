@@ -123,7 +123,11 @@ module Net
       #     Net::IMAP::SearchResult[9, 1, 2, 4, 10, 12, 3, modseq: 123_456]
       #       .to_sequence_set
       #     # => Net::IMAP::SequenceSet["1:4,9:10,12"]
-      def to_sequence_set; SequenceSet[*self] end
+      #
+      # >>>
+      #   *NOTE:* +SORT+ order is not preserved.  The result will be sorted.
+      #
+      def to_sequence_set; empty? ? SequenceSet.empty : SequenceSet[to_a] end
 
       def pretty_print(pp)
         return super if modseq.nil?
