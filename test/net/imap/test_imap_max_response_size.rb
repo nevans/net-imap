@@ -36,6 +36,7 @@ class IMAPMaxResponseSizeTest < Net::IMAP::TestCase
     Net::IMAP.config.max_response_size = 1<<20
     with_fake_server(preauth: false, ignore_io_error: true) do |server, client|
       client.max_response_size = 50
+      client.noop # will reset response_reader, so the above config takes effect
       server.on("NOOP") do |resp|
         resp.untagged("1 FETCH (BODY[] {1000}\r\n" + "a" * 1000 + ")")
       end
