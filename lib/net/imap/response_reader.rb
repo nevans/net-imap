@@ -70,7 +70,7 @@ module Net
         empty? ? 3 : done? ? 0 : (literal_size || 0) + 2
       end
 
-      def guard_response_too_large! = (raise self if response_too_large?)
+      def guard_response_too_large! = (raise exception if response_too_large?)
 
       def exception(msg = nil)
         ResponseTooLargeError.new(
