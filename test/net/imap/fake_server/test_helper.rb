@@ -16,6 +16,7 @@ module Net::IMAP::FakeServer::TestHelper
   def run_fake_server_in_thread(ignore_io_error: false,
                                 report_on_exception: true,
                                 timeout: 10, **opts)
+    timeout *= EnvUtil.timeout_scale || 1 if defined?(EnvUtil.timeout_scale)
     Timeout.timeout(timeout) do
       server = Net::IMAP::FakeServer.new(timeout: timeout, **opts)
       @threads << Thread.new do
