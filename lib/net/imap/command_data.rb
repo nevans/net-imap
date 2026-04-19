@@ -4,6 +4,8 @@ require "date"
 
 require_relative "errors"
 
+# :enddoc:
+
 module Net
   class IMAP < Protocol
 
