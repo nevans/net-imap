@@ -3249,10 +3249,12 @@ module Net
       response = nil
 
       synchronize do
+        cork_socket
         tag = Thread.current[:net_imap_tag] = generate_tag
         command = Command[tag:, name: "IDLE"]
         put_string("#{tag} IDLE#{CRLF}")
         finish_sending_command(command)
+        uncork_socket
 
         begin
           add_response_handler(&response_handler)
@@ -3562,6 +3564,40 @@ module Net
         "#{host}:#{port} (exceeds #{open_timeout} seconds)"
     end
 
+    TCP_CORK_SUPPORTED = Socket.const_defined?(:IPPROTO_TCP) &&
+      Socket.const_defined?(:TCP_CORK)
+    if TCP_CORK_SUPPORTED
+
+      def cork_socket
+        sock = @sock.to_io
+        return unless sock.kind_of? TCPSocket
+        begin
+          sock.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 1)
+        rescue IOError, SystemCallError
+        end
+      end
+
+      def uncork_socket
+        @sock.flush
+        sock = @sock.to_io
+        return unless sock.kind_of? TCPSocket
+        begin
+          sock.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_CORK, 0)
+        rescue IOError, SystemCallError
+        end
+      end
+
+    else
+
+      def cork_socket; nil end
+
+      def uncork_socket
+        @sock.flush
+        nil
+      end
+
+    end
+
     def receive_responses
       exception = nil
       loop do
@@ -3683,6 +3719,7 @@ module Net
     def send_command(cmd, *args, &block)
       args.each do validate_data _1 end
       synchronize do
+        cork_socket
         tag = generate_tag
         command = Command[tag:, name: cmd]
         put_string(tag + " " + cmd)
@@ -3695,6 +3732,7 @@ module Net
         add_response_handler(&block) if block
         begin
           put_string(CRLF)
+          uncork_socket
           get_tagged_response(tag, cmd)
         ensure
           remove_response_handler(block) if block

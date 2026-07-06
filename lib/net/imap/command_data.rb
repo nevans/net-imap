@@ -114,6 +114,7 @@ module Net
         prefix = "~" if binary
         plus = "+" if non_sync
         put_string("#{prefix}{#{bytesize}#{plus}}\r\n")
+        uncork_socket
         if non_sync
           put_string(str)
           return
