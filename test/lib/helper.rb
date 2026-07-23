@@ -3,6 +3,10 @@ if !(ENV["SIMPLECOV_DISABLE"] in /\A(1|y(es)?|t(rue)?)\z/i) &&
 
   require "simplecov"
 
+  # run `rake coverage:report` for HTML/JSON formatter
+  require_relative "simplecov_markdown_table_formatter"
+  SimpleCov.formatter = SimpleCovMarkdownTableFormatter
+
   SimpleCov.start do
     command_name "Net::IMAP tests"
   end
